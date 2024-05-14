@@ -1,12 +1,12 @@
 # 3MS(Multi-Model MRI Image Synthesis)
 Multi-model (Multi-Sequence) MRI Image Synthesis Task 多模态（多序列）MRI图像生成
 
-## 数据集
+## 数据集 
 BraTS2023 脑胶质瘤数据集
 包含4个序列：T1, T1ce, T2, FLAIR
-### 数据集预处理
-- 使用2D图像预处理
-- 将4个序列的图像合拼接成成一个图像，组合成3通道480 * 480的图像为一个样本
+### 数据集预处理 
+- [x] 使用2D图像预处理
+- [x] 将4个序列的图像合拼接成成一个图像，组合成3通道480 * 480的图像为一个样本
 
 ## 思路
 - 训练：
@@ -21,5 +21,6 @@ BraTS2023 脑胶质瘤数据集
 1. U-Net
 2. nnU-Net
 3. U-Net++
-3. GAN
-4. Diffusion Model
+4. GAN
+5. Diffusion Model
+6. VAE
