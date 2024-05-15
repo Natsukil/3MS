@@ -1,0 +1,5 @@
+mask:
+  mask_kernel_size: 12
+  single_image_size: (192,192)
+  binary_mask: 1111
+  mask_rate: 0.5
