@@ -28,9 +28,10 @@ import random
 import SimpleITK as sitk
 from tqdm import tqdm
 from torch.utils.data import Dataset, DataLoader
+from mask_generator.masker import random_masked_area
 
 class Dataset_brats(Dataset):
-    def __init__(self, root_dir, mode='train'):
+    def __init__(self, root_dir, mask_kernel_size=12, single_image_size=(192,192), binary_mask='1111', mask_rate=0.5, mode='train'):
         """
         初始化函数，列出所有患者的数据目录。
         """
@@ -38,6 +39,10 @@ class Dataset_brats(Dataset):
         self.root_dir = root_dir
         self.patients = [os.path.join(root_dir, name) for name in os.listdir(root_dir) if
                          os.path.isdir(os.path.join(root_dir, name))]
+        self.single_image_size = single_image_size
+        self.mask_kernel_size = mask_kernel_size
+        self.binary_mask = binary_mask
+        self.mask_rate = mask_rate
 
     def __len__(self):
         return len(self.patients)
@@ -59,7 +64,9 @@ class Dataset_brats(Dataset):
         #     'flair': torch.from_numpy(t2f)
         # }
         combined_image = self.preprocess_directory(patient_path)
-        return torch.tensor(combined_image, dtype=torch.float32)  # Convert numpy array to torch tensor
+        masked_image = random_masked_area(combined_image, self.mask_kernel_size, self.single_image_size, self.binary_mask, self.mask_rate)
+        masked_result = np.where(masked_image == 1, combined_image, -1)
+        return torch.tensor(masked_result, dtype=torch.float32), torch.tensor(combined_image, dtype=torch.float32)  # Convert numpy array to torch tensor
 
     def preprocess_directory(self, directory):
         """
@@ -125,11 +132,11 @@ def get_dataloader(root_dir, batch_size=1, shuffle=True, num_workers=1):
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=True)
     return dataloader
 
-# if __name__ == '__main__':
+if __name__ == '__main__':
     import matplotlib.pyplot as plt
-    # root_dir = 'E:\Work\dataset\ASNR-MICCAI-BraTS2023-GLI-Challenge-TrainingData'
-    # dataloader = get_dataloader(root_dir, batch_size=1, num_workers=8)
-    # t1_min, t2c_min, t2f_min, flair_min = float('inf'),float('inf'),float('inf'),float('inf')
+    root_dir = 'E:\Work\dataset\ASNR-MICCAI-BraTS2023-GLI-Challenge-TrainingData'
+    dataloader = get_dataloader(root_dir, batch_size=1, num_workers=8)
+    t1_min, t2c_min, t2f_min, flair_min = float('inf'),float('inf'),float('inf'),float('inf')
     # for batch in tqdm(dataloader):
     #     # 获取当前批次的最小值
     #     current_t1_min = torch.min(batch['t1n'])
@@ -143,10 +150,28 @@ def get_dataloader(root_dir, batch_size=1, shuffle=True, num_workers=1):
     #     t2f_min = min(t2f_min, current_t2f_min.item())
     #     flair_min = min(flair_min, current_flair_min.item())
     # print(f"Minimum values across the dataset:\n T1: {t1_min}\n T2c: {t2c_min}\n T2f: {t2f_min}\n FLAIR: {flair_min}")
-    # data_iter = iter(dataloader)
-    # images = next(data_iter)  # 获取一个批次的图像
+    data_iter = iter(dataloader)
+    X, y = next(data_iter)  # 获取一个批次的图像
+    #
+    print(X.shape, y.shape)
+    # 设置图像显示的大小
+    plt.figure(figsize=(10, 5))
 
-    # print(images.shape)
+    # 显示 masked_image
+    plt.subplot(1, 2, 1)  # 1行3列的第1个位置
+    plt.imshow(X[0, 50, :, :], cmap='gray')
+    plt.colorbar()  # 添加颜色条
+    plt.title('Masked Image')  # 添加标题
+    plt.axis('off')  # 关闭坐标轴显示
+
+    # 显示 masked_result
+    plt.subplot(1, 2, 2)  # 1行3列的第2个位置
+    plt.imshow(y[0, 50, :, :], cmap='gray')
+    plt.colorbar()  # 添加颜色条
+    plt.title('Masked Result')
+    plt.axis('off')  # 关闭坐标轴显示
+    plt.show()
+
 #     image_to_show = images[0][0]  # 这里的0代表批次中的第一张图像，再一个0代表128个切片中的第一个
 #
 #     # 显示图像
