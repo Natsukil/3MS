@@ -26,6 +26,7 @@ import numpy as np
 import torch
 import random
 import SimpleITK as sitk
+from tqdm import tqdm
 from torch.utils.data import Dataset, DataLoader
 
 class Dataset_brats(Dataset):
@@ -45,7 +46,18 @@ class Dataset_brats(Dataset):
         """
         根据索引idx获取数据，处理后返回。
         """
+
         patient_path = self.patients[idx]
+        # t1c = self.read_image(os.path.join(patient_path, f"{os.path.basename(patient_path)}-t1c.nii.gz"))
+        # t1n = self.read_image(os.path.join(patient_path, f"{os.path.basename(patient_path)}-t1n.nii.gz"))
+        # t2w = self.read_image(os.path.join(patient_path, f"{os.path.basename(patient_path)}-t2w.nii.gz"))
+        # t2f = self.read_image(os.path.join(patient_path, f"{os.path.basename(patient_path)}-t2f.nii.gz"))
+        # return {
+        #     't1c': torch.from_numpy(t1c),
+        #     't1n': torch.from_numpy(t1n),
+        #     't2w': torch.from_numpy(t2w),
+        #     'flair': torch.from_numpy(t2f)
+        # }
         combined_image = self.preprocess_directory(patient_path)
         return torch.tensor(combined_image, dtype=torch.float32)  # Convert numpy array to torch tensor
 
@@ -88,7 +100,7 @@ class Dataset_brats(Dataset):
         image = (image / max_val) * 2 - 1
         return image
 
-    def resize_and_crop(self, image, new_depth=128, new_height=192, new_width=192):
+    def resize_and_crop(self, image, new_depth=100, new_height=192, new_width=192):
         start_d = (image.shape[0] - new_depth) // 2
         start_h = (image.shape[1] - new_height) // 2
         start_w = (image.shape[2] - new_width) // 2
@@ -108,17 +120,33 @@ class Dataset_brats(Dataset):
         return image
 
 
-# def get_dataloader(root_dir, batch_size=1, shuffle=True, num_workers=1):
-#     dataset = Dataset_brats(root_dir=root_dir)
-#     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=True)
-#     return dataloader
+def get_dataloader(root_dir, batch_size=1, shuffle=True, num_workers=1):
+    dataset = Dataset_brats(root_dir=root_dir)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=True)
+    return dataloader
 
 # if __name__ == '__main__':
-#     import matplotlib.pyplot as plt
-#     root_dir = 'E:\Work\dataset\ASNR-MICCAI-BraTS2023-GLI-Challenge-TrainingData'
-#     dataloader = get_dataloader(root_dir, batch_size=4)
-#     data_iter = iter(dataloader)
-#     images = next(data_iter)  # 获取一个批次的图像
+    import matplotlib.pyplot as plt
+    # root_dir = 'E:\Work\dataset\ASNR-MICCAI-BraTS2023-GLI-Challenge-TrainingData'
+    # dataloader = get_dataloader(root_dir, batch_size=1, num_workers=8)
+    # t1_min, t2c_min, t2f_min, flair_min = float('inf'),float('inf'),float('inf'),float('inf')
+    # for batch in tqdm(dataloader):
+    #     # 获取当前批次的最小值
+    #     current_t1_min = torch.min(batch['t1n'])
+    #     current_t2c_min = torch.min(batch['t1c'])
+    #     current_t2f_min = torch.min(batch['t2w'])
+    #     current_flair_min = torch.min(batch['flair'])
+    #
+    #     # 更新全局最小值
+    #     t1_min = min(t1_min, current_t1_min.item())
+    #     t2c_min = min(t2c_min, current_t2c_min.item())
+    #     t2f_min = min(t2f_min, current_t2f_min.item())
+    #     flair_min = min(flair_min, current_flair_min.item())
+    # print(f"Minimum values across the dataset:\n T1: {t1_min}\n T2c: {t2c_min}\n T2f: {t2f_min}\n FLAIR: {flair_min}")
+    # data_iter = iter(dataloader)
+    # images = next(data_iter)  # 获取一个批次的图像
+
+    # print(images.shape)
 #     image_to_show = images[0][0]  # 这里的0代表批次中的第一张图像，再一个0代表128个切片中的第一个
 #
 #     # 显示图像

@@ -31,7 +31,7 @@ def train_ch6(net, train_iter, test_iter, num_epochs, lr, device, save_path=None
         os.makedirs(directory, exist_ok=True)  # 创建目录
         model_path = os.path.join(directory, 'best.ckpt')
 
-    print('training on', device)
+    print('trainin on', device)
     net.to(device)
     optimizer = torch.optim.SGD(net.parameters(), lr=lr)
     loss_f = nn.CrossEntropyLoss()
