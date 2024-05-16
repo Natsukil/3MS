@@ -101,20 +101,20 @@ class UNet(nn.Module):
         logits = self.outc(x)
         return logits
 
-if __name__ == '__main__':
-    X = torch.randn((1, 1, 480, 480))
-    net = UNet(in_channels=1, out_channels=1)
-    Y = net(X)
-    print(Y.shape)
+# if __name__ == '__main__':
+#     X = torch.randn((10, 1, 480, 480))
+#     net = UNet(in_channels=1, out_channels=1)
+#     Y = net(X)
+#     print(Y.shape)
 
     # def use_checkpointing(self):
-    #     self.inc = torch.utils.checkpoint(self.inc)
-    #     self.down1 = torch.utils.checkpoint(self.down1)
-    #     self.down2 = torch.utils.checkpoint(self.down2)
-    #     self.down3 = torch.utils.checkpoint(self.down3)
-    #     self.down4 = torch.utils.checkpoint(self.down4)
-    #     self.up1 = torch.utils.checkpoint(self.up1)
-    #     self.up2 = torch.utils.checkpoint(self.up2)
-    #     self.up3 = torch.utils.checkpoint(self.up3)
-    #     self.up4 = torch.utils.checkpoint(self.up4)
-    #     self.outc = torch.utils.checkpoint(self.outc)
+    #     self.inc = torch.utilss.checkpoint(self.inc)
+    #     self.down1 = torch.utilss.checkpoint(self.down1)
+    #     self.down2 = torch.utilss.checkpoint(self.down2)
+    #     self.down3 = torch.utilss.checkpoint(self.down3)
+    #     self.down4 = torch.utilss.checkpoint(self.down4)
+    #     self.up1 = torch.utilss.checkpoint(self.up1)
+    #     self.up2 = torch.utilss.checkpoint(self.up2)
+    #     self.up3 = torch.utilss.checkpoint(self.up3)
+    #     self.up4 = torch.utilss.checkpoint(self.up4)
+    #     self.outc = torch.utilss.checkpoint(self.outc)

@@ -7,7 +7,7 @@ def random_masked_area(image_batch, mask_kernel_size, single_image_size, binary_
     """
     为图像批次创建遮蔽区域。
 
-    :param image_batch: ndarray, 图像的批次，形状为 (batch_size, slice_num, height, width)
+    :param image_batch: ndarray, 图像的批次，形状为 (slice_num, height, width)
     :param mask_kernel_size: int, 遮蔽块的尺寸
     :param single_image_size: tuple, 每个子图的尺寸 (height, width)
     :param binary_mask: str, 四位二进制字符串，表示哪些区域需要遮蔽

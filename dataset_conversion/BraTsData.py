@@ -26,12 +26,12 @@ import numpy as np
 import torch
 import random
 import SimpleITK as sitk
-from tqdm import tqdm
 from torch.utils.data import Dataset, DataLoader
 from mask_generator.masker import random_masked_area
 
+
 class Dataset_brats(Dataset):
-    def __init__(self, root_dir, mask_kernel_size=12, single_image_size=(192,192), binary_mask='1111', mask_rate=0.5, mode='train'):
+    def __init__(self, root_dir, slice_size, mask_kernel_size=12, single_image_size=192, binary_mask='1111', mask_rate=0.5, mode='train'):
         """
         初始化函数，列出所有患者的数据目录。
         """
@@ -39,10 +39,12 @@ class Dataset_brats(Dataset):
         self.root_dir = root_dir
         self.patients = [os.path.join(root_dir, name) for name in os.listdir(root_dir) if
                          os.path.isdir(os.path.join(root_dir, name))]
-        self.single_image_size = single_image_size
+        # 遮蔽算法的超参数初始化
+        self.single_image_size = (single_image_size, single_image_size)
         self.mask_kernel_size = mask_kernel_size
         self.binary_mask = binary_mask
         self.mask_rate = mask_rate
+        self.slice_size = slice_size
 
     def __len__(self):
         return len(self.patients)
@@ -51,8 +53,8 @@ class Dataset_brats(Dataset):
         """
         根据索引idx获取数据，处理后返回。
         """
-
         patient_path = self.patients[idx]
+        # 直接读取后批量输出原始图像
         # t1c = self.read_image(os.path.join(patient_path, f"{os.path.basename(patient_path)}-t1c.nii.gz"))
         # t1n = self.read_image(os.path.join(patient_path, f"{os.path.basename(patient_path)}-t1n.nii.gz"))
         # t2w = self.read_image(os.path.join(patient_path, f"{os.path.basename(patient_path)}-t2w.nii.gz"))
@@ -63,9 +65,13 @@ class Dataset_brats(Dataset):
         #     't2w': torch.from_numpy(t2w),
         #     'flair': torch.from_numpy(t2f)
         # }
+        # 预处理并拼接图像
         combined_image = self.preprocess_directory(patient_path)
+        # 生成遮蔽掩码
         masked_image = random_masked_area(combined_image, self.mask_kernel_size, self.single_image_size, self.binary_mask, self.mask_rate)
+        # 生成遮蔽后图像
         masked_result = np.where(masked_image == 1, combined_image, -1)
+        # 返回遮蔽后图像X和原始图像y
         return torch.tensor(masked_result, dtype=torch.float32), torch.tensor(combined_image, dtype=torch.float32)  # Convert numpy array to torch tensor
 
     def preprocess_directory(self, directory):
@@ -73,17 +79,17 @@ class Dataset_brats(Dataset):
         处理指定目录下的所有图像，返回预处理和拼接后的图像。
         """
         # 读取图像
-        seg = self.read_image(os.path.join(directory, f"{os.path.basename(directory)}-seg.nii.gz"))
+        # seg = self.read_image(os.path.join(directory, f"{os.path.basename(directory)}-seg.nii.gz"))
         t1c = self.read_image(os.path.join(directory, f"{os.path.basename(directory)}-t1c.nii.gz"))
         t1n = self.read_image(os.path.join(directory, f"{os.path.basename(directory)}-t1n.nii.gz"))
         t2w = self.read_image(os.path.join(directory, f"{os.path.basename(directory)}-t2w.nii.gz"))
         t2f = self.read_image(os.path.join(directory, f"{os.path.basename(directory)}-t2f.nii.gz"))
 
         # 归一化、剪裁、随机翻转和拼接
-        t1c = self.resize_and_crop(self.normalize(t1c))
-        t1n = self.resize_and_crop(self.normalize(t1n))
-        t2w = self.resize_and_crop(self.normalize(t2w))
-        t2f = self.resize_and_crop(self.normalize(t2f))
+        t1c = self.resize_and_crop(self.normalize(t1c), new_depth=self.slice_size)
+        t1n = self.resize_and_crop(self.normalize(t1n), new_depth=self.slice_size)
+        t2w = self.resize_and_crop(self.normalize(t2w), new_depth=self.slice_size)
+        t2f = self.resize_and_crop(self.normalize(t2f), new_depth=self.slice_size)
 
         # 决定一个随机翻转操作并应用到所有图像
         flip_action = random.choice([0, 1, 2])  # 从三种操作中随机选择
@@ -107,7 +113,7 @@ class Dataset_brats(Dataset):
         image = (image / max_val) * 2 - 1
         return image
 
-    def resize_and_crop(self, image, new_depth=100, new_height=192, new_width=192):
+    def resize_and_crop(self, image, new_depth=32, new_height=192, new_width=192):
         start_d = (image.shape[0] - new_depth) // 2
         start_h = (image.shape[1] - new_height) // 2
         start_w = (image.shape[2] - new_width) // 2
@@ -127,55 +133,9 @@ class Dataset_brats(Dataset):
         return image
 
 
-def get_dataloader(root_dir, batch_size=1, shuffle=True, num_workers=1):
-    dataset = Dataset_brats(root_dir=root_dir)
+def get_dataloader(root_dir, batch_size=1, slice_size=2, shuffle=True, num_workers=1, mask_kernel_size=12, single_image_size=192, binary_mask='1111', mask_rate=0.5, mode='train'):
+    dataset = Dataset_brats(root_dir=root_dir, slice_size=slice_size, mask_kernel_size=mask_kernel_size, single_image_size=single_image_size, binary_mask=binary_mask, mask_rate=mask_rate, mode=mode)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=True)
     return dataloader
 
-if __name__ == '__main__':
-    import matplotlib.pyplot as plt
-    root_dir = 'E:\Work\dataset\ASNR-MICCAI-BraTS2023-GLI-Challenge-TrainingData'
-    dataloader = get_dataloader(root_dir, batch_size=1, num_workers=8)
-    t1_min, t2c_min, t2f_min, flair_min = float('inf'),float('inf'),float('inf'),float('inf')
-    # for batch in tqdm(dataloader):
-    #     # 获取当前批次的最小值
-    #     current_t1_min = torch.min(batch['t1n'])
-    #     current_t2c_min = torch.min(batch['t1c'])
-    #     current_t2f_min = torch.min(batch['t2w'])
-    #     current_flair_min = torch.min(batch['flair'])
-    #
-    #     # 更新全局最小值
-    #     t1_min = min(t1_min, current_t1_min.item())
-    #     t2c_min = min(t2c_min, current_t2c_min.item())
-    #     t2f_min = min(t2f_min, current_t2f_min.item())
-    #     flair_min = min(flair_min, current_flair_min.item())
-    # print(f"Minimum values across the dataset:\n T1: {t1_min}\n T2c: {t2c_min}\n T2f: {t2f_min}\n FLAIR: {flair_min}")
-    data_iter = iter(dataloader)
-    X, y = next(data_iter)  # 获取一个批次的图像
-    #
-    print(X.shape, y.shape)
-    # 设置图像显示的大小
-    plt.figure(figsize=(10, 5))
 
-    # 显示 masked_image
-    plt.subplot(1, 2, 1)  # 1行3列的第1个位置
-    plt.imshow(X[0, 50, :, :], cmap='gray')
-    plt.colorbar()  # 添加颜色条
-    plt.title('Masked Image')  # 添加标题
-    plt.axis('off')  # 关闭坐标轴显示
-
-    # 显示 masked_result
-    plt.subplot(1, 2, 2)  # 1行3列的第2个位置
-    plt.imshow(y[0, 50, :, :], cmap='gray')
-    plt.colorbar()  # 添加颜色条
-    plt.title('Masked Result')
-    plt.axis('off')  # 关闭坐标轴显示
-    plt.show()
-
-#     image_to_show = images[0][0]  # 这里的0代表批次中的第一张图像，再一个0代表128个切片中的第一个
-#
-#     # 显示图像
-#     plt.imshow(image_to_show, cmap='gray')  # 使用灰度颜色映射
-#     plt.title('Sample Image from DataLoader')
-#     plt.axis('off')  # 关闭坐标轴显示
-#     plt.show()
