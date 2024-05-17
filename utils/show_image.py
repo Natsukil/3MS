@@ -9,7 +9,7 @@ root_dir = 'E:\Work\dataset\ASNR-MICCAI-BraTS2023-GLI-Challenge-TrainingData'
 
 def get_dataloader_iterator():
     dataloader = get_dataloader(slice_size=100, root_dir=root_dir, batch_size=1, shuffle=False, num_workers=4,
-                                mask_rate=0.9, binary_mask='1000', mode='eval')
+                                mask_rate=1, binary_mask='1000', mode='eval')
     return iter(dataloader)
 
 def show_mask_origin(X, y, index):
@@ -99,7 +99,7 @@ def test_slice_result(X, y, index):
         plt.title(f'{region_name} Region')
         plt.axis('off')
 
-    plt.suptitle('Visualizing Different Regions of a Single Batch')
+    plt.suptitle(f'Visualizing Different Regions of a Single Batch: Slice{index}')
     plt.show()
 
 def extract_region(img, quadrant, size):
@@ -138,17 +138,18 @@ def test_eval_regions(X, y, index):
         plt.title(f'{region_name} Region')
         plt.axis('off')
 
-    plt.suptitle('Visualizing Different Regions of a Single Batch in evaluation')
+    plt.suptitle(f'Visualizing Different Regions of a Single Batch in evaluationc: Slice {index}')
     plt.show()
 
 if __name__ == '__main__':
     # 获取迭代器
     data_iter = get_dataloader_iterator()
     X, y = next(data_iter)  # 获取一个批次的图像
+    index_show=99
     # 显示图片
-    show_mask_origin(X, y,50)
+    show_mask_origin(X, y,index_show)
     # 计算像素值
     # calculate_mutil_model_pixel_value()
     # 测试切分片
-    test_slice_result(X, y,50)
-    test_eval_regions(X, y,50)
+    test_slice_result(X, y,index_show)
+    test_eval_regions(X, y,index_show)

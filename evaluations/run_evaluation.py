@@ -3,25 +3,32 @@ from torch.utils.data import DataLoader
 import torch
 from networks.UNet import UNet
 from utils.swap_dimensions import swap_batch_slice_dimensions
-from training.loss_function import loss_functions
+from training.loss_function import LossFunctions
 from eval import evaluate_model
-def evaluation():
+from tqdm import tqdm
+import matplotlib.pyplot as plt
+
+
+def evaluation(load_dir, show_image=False):
     # 训练设备
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print("Training on:", device)
+    print("Evaluating on:", device)
 
     # 定义网络模型
     net = UNet(in_channels=1, out_channels=1)
     net.to(device)
 
+    net.load_state_dict(torch.load(load_dir, map_location=device))
+    print(f"load model from {load_dir}")
+
     test_binary_mask = '1000'
 
     root_dir = "E:\Work\dataset\ASNR-MICCAI-BraTS2023-GLI-Challenge-ValidationData"
-    dataset = Dataset_brats(root_dir=root_dir, slice_size=2, binary_mask=test_binary_mask, mask_rate=1,mode='eval')
+    dataset = Dataset_brats(root_dir=root_dir, slice_size=2, binary_mask=test_binary_mask, mask_rate=1, mode='eval')
     test_loader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=4, pin_memory=True)
 
     # 定义损失函数
-    loss = loss_functions()
+    loss = LossFunctions()
 
     # 定义性能评价指标
     eval = evaluate_model
@@ -32,7 +39,7 @@ def evaluation():
     avg_ssim = [0.0] * 4
     count = 0
     with torch.no_grad():  # 关闭梯度计算
-        for masked_images, original_images in test_loader:
+        for masked_images, original_images in tqdm(test_loader, desc="Evaluating", unit="batch-person"):
             masked_images = masked_images.to(device)
             original_images = original_images.to(device)
             # 交换维度Batch_size和Slice_num
@@ -42,6 +49,27 @@ def evaluation():
             original_images = swap_batch_slice_dimensions(original_images)
 
             outputs = net(masked_images)
+
+            if show_image:
+                original_images = original_images.to('cpu')
+                outputs = outputs.to('cpu')
+                plt.figure(figsize=(10, 5))
+
+                # 显示 original_images
+                plt.subplot(1, 2, 1)  # 1行3列的第1个位置
+                plt.imshow(original_images[0, 0, :, :], cmap='gray')
+                plt.colorbar()  # 添加颜色条
+                plt.title('original_images')  # 添加标题
+                plt.axis('off')  # 关闭坐标轴显示
+
+                # 显示 masked_result
+                plt.subplot(1, 2, 2)  # 1行3列的第2个位置
+                plt.imshow(outputs[0, 0, :, :], cmap='gray')
+                plt.colorbar()  # 添加颜色条
+                plt.title('Masked Result')
+                plt.axis('off')  # 关闭坐标轴显示
+                plt.show()
+                break
 
             # 计算损失
             test_loss += loss.calculate_loss(outputs, original_images, binary_masks=test_binary_mask).item()
@@ -53,13 +81,16 @@ def evaluation():
                 avg_ssim[j] += current_ssim[j]
             count += 1
 
+    if show_image:
+        exit()
+
     test_loss /= len(test_loader)
     avg_psnr_total = [x / count for x in avg_psnr]
     avg_ssim_total = [x / count for x in avg_ssim]
     # 打印结果
     print(f"验证损失: {test_loss:.4f}")
-    print("平均 PSNR: ", " ".join([f"{x:.4f}" for x in avg_psnr_total]))
-    print("平均 SSIM: ", " ".join([f"{x:.4f}" for x in avg_ssim_total]))
+    # print("平均 PSNR: ", " ".join([f"{x:.4f}" for x in avg_psnr_total]))
+    # print("平均 SSIM: ", " ".join([f"{x:.4f}" for x in avg_ssim_total]))
 
     # 打印每种模态的详细 PSNR 和 SSIM
     print(
@@ -67,5 +98,6 @@ def evaluation():
     print(
         f"验证 SSIM T1n {avg_ssim_total[0]:.4f}, T1c {avg_ssim_total[1]:.4f}, T2w {avg_ssim_total[2]:.4f}, T2f {avg_ssim_total[3]:.4f}")
 
+
 if __name__ == '__main__':
-    evaluation()
+    evaluation("result/models/UNet/1000-05-16-22-01-10/best_model_epoch_3.ckpt", show_image=True)

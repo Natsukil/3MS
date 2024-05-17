@@ -1,10 +1,11 @@
 import argparse
 from networks.UNet import UNet
+from networks.S_UNet import S_UNet
 import torch
 import yaml
 from init_weight import ModelInitializer
 from dataset_conversion.BraTsData import Dataset_brats, get_dataloader
-from loss_function import loss_functions
+from loss_function import LossFunctions
 from evaluations.eval import evaluate_model
 import datetime
 import os
@@ -12,6 +13,7 @@ from tqdm import tqdm
 from utils.swap_dimensions import swap_batch_slice_dimensions
 import logging
 import time
+from torch.utils.tensorboard import SummaryWriter
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -35,7 +37,7 @@ def get_args():
 
 if __name__ == '__main__':
     batch_size = 1
-    slice_size = 8
+    slice_size = 16
     learning_rate = 2e-4
     epochs = 100
     train_binary_mask = '1000'
@@ -46,7 +48,7 @@ if __name__ == '__main__':
     print("Training on:", device)
 
     # 定义网络模型
-    net = UNet(in_channels=1, out_channels=1)
+    net = S_UNet(in_channels=1, base_filters=32, bias=False)
     net.to(device)
 
     # 读取预训练模型，或从头训练
@@ -62,7 +64,7 @@ if __name__ == '__main__':
         print("Training a new model")
 
     # 定义模型保存路径
-    save_dir = "result/models/UNet/"
+    save_dir = "result/models/S_UNet/"
     current_time = datetime.datetime.now().strftime("-%m-%d-%H-%M-%S")
     directory = os.path.join(save_dir,train_binary_mask+current_time)
     os.makedirs(directory, exist_ok=True)  # 创建目录
@@ -75,6 +77,11 @@ if __name__ == '__main__':
     log_filename = current_time + ".log"
     logging.basicConfig(filename=os.path.join(log_dir, log_filename), level=logging.INFO)
 
+    # 创建 TensorBoard 记录器
+    tensorboard_dir = os.path.join(save_dir, "tensorboard_logs")
+    os.makedirs(tensorboard_dir, exist_ok=True)
+    writer = SummaryWriter(log_dir=tensorboard_dir)
+
     # 定义优化器
     optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
 
@@ -82,7 +89,7 @@ if __name__ == '__main__':
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
     # 定义损失函数
-    loss = loss_functions()
+    loss = LossFunctions()
 
     # 定义性能评价指标
     eval = evaluate_model
@@ -90,7 +97,7 @@ if __name__ == '__main__':
     # 训练数据集与测试数据集
     BraTS_train_root = "E:\Work\dataset\ASNR-MICCAI-BraTS2023-GLI-Challenge-TrainingData"
     BraTS_test_root = "E:\Work\dataset\ASNR-MICCAI-BraTS2023-GLI-Challenge-ValidationData"
-    train_loader = get_dataloader(slice_size=slice_size, root_dir=BraTS_train_root, batch_size=1, shuffle=True, num_workers=4, mask_rate=1, binary_mask=train_binary_mask, mode='train')
+    train_loader = get_dataloader(slice_size=slice_size, root_dir=BraTS_train_root, batch_size=1, shuffle=True, num_workers=2, mask_rate=1, binary_mask=train_binary_mask, mode='train')
     test_loader = get_dataloader(slice_size=slice_size, root_dir=BraTS_test_root, batch_size=1, shuffle=False, num_workers=4, mask_rate=1, binary_mask=test_binary_mask, mode='eval')
 
     # 初始化用于跟踪最佳模型的变量
@@ -143,8 +150,9 @@ if __name__ == '__main__':
                 pbar.set_postfix(loss=avg_loss)  # 显示当前批次的平均损失
                 pbar.update()
                 i += 1
-
-                # 调整学习率
+            # 记录训练损失到 TensorBoard
+            writer.add_scalar('Loss/train', avg_loss, epoch)
+            # 调整学习率
             scheduler.step()
 
         # 验证模型性能
@@ -195,10 +203,22 @@ if __name__ == '__main__':
         print(f"验证 PSNR T1c {avg_psnr_total[0]:.4f}, T1n {avg_psnr_total[1]:.4f}, T2w {avg_psnr_total[2]:.4f}, T2f {avg_psnr_total[3]:.4f}")
         print(f"验证 SSIM T1c {avg_ssim_total[0]:.4f}, T1n {avg_ssim_total[1]:.4f}, T2w {avg_ssim_total[2]:.4f}, T2f {avg_ssim_total[3]:.4f}")
 
+        # 记录验证损失和指标到 TensorBoard
+        writer.add_scalar('Loss/test', test_loss, epoch)
+        writer.add_scalar('PSNR/T1c', avg_psnr_total[0], epoch)
+        writer.add_scalar('PSNR/T1n', avg_psnr_total[1], epoch)
+        writer.add_scalar('PSNR/T2w', avg_psnr_total[2], epoch)
+        writer.add_scalar('PSNR/T2f', avg_psnr_total[3], epoch)
+        writer.add_scalar('SSIM/T1c', avg_ssim_total[0], epoch)
+        writer.add_scalar('SSIM/T1n', avg_ssim_total[1], epoch)
+        writer.add_scalar('SSIM/T2w', avg_ssim_total[2], epoch)
+        writer.add_scalar('SSIM/T2f', avg_ssim_total[3], epoch)
+
         # 在每个epoch后记录训练和验证结果
-        # logging.info(f"Epoch {epoch + 1}, Training Loss: {avg_loss:.4f}, Validation Loss: {test_loss:.4f}")
+        logging.info(f"Epoch {epoch + 1}, Training Loss: {avg_loss:.4f}, Validation Loss: {test_loss:.4f}")
         logging.info(f"Validation PSNR: {' '.join([f'{x:.4f}' for x in avg_psnr_total])}")
         logging.info(f"Validation SSIM: {' '.join([f'{x:.4f}' for x in avg_ssim_total])}")
+        logging.info("------------------------------------------------------")
 
         # 保存最佳模型
         if test_loss < best_loss:
@@ -215,3 +235,5 @@ if __name__ == '__main__':
             torch.save(net.state_dict(), checkpoint_path)
             print(f"Saved checkpoint at epoch {epoch + 1}")
     # args = get_args()
+     # 关闭 TensorBoard 记录器
+    writer.close()

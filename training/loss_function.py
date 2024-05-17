@@ -3,12 +3,29 @@ import torch
 import torch.nn as nn
 
 
-class loss_functions:
+class LossFunctions:
     def __init__(self):
         self.mse_loss = nn.MSELoss()
         self.ssim_loss = pytorch_msssim.SSIM()
+
+    def calculate_weights(self, binary_masks):
+        """
+        计算每个区域的权重
+        :param binary_masks: 四位二进制字符串，表示哪些区域被遮蔽
+        :return: 每个区域的权重列表
+        """
+        mask_counts = sum(int(b) for b in binary_masks)
+        if mask_counts == 4:  # 所有区域均发生遮蔽
+            weights = [0.25] * 4  # 均匀分配权重
+        else:
+            # 遮蔽区域和非遮蔽区域的比率为3:1
+            masked_weight = 3 / 4 / mask_counts # 每个遮蔽区域的权重
+            unmasked_weight = 1 / 4 / (4 - mask_counts)  # 每个非遮蔽区域的权重
+            weights = [masked_weight if b == '1' else unmasked_weight for b in binary_masks]
+        return weights
+
     def calculate_loss(self, y_hat, y,  binary_masks):
-        # assert binary_masks is not None, "Binary masks must be provided"
+        assert binary_masks is not None, "Binary masks must be provided"
 
         # 假设输入的尺寸为 [batch_size, 1, 2*w, 2*h]
         w, h = y.shape[2] // 2, y.shape[3] // 2
@@ -22,6 +39,9 @@ class loss_functions:
             't2f': (slice(None), slice(None), slice(w, 2 * w), slice(h, 2 * h)),  # 右下
         }
 
+        # 计算每个区域的权重
+        weights = self.calculate_weights(binary_masks)
+
         # 计算每个区域的损失
         for idx, region in enumerate(['t1c', 't1n', 't2w', 't2f']):
             # if binary_masks[idx] == '1':
@@ -32,5 +52,10 @@ class loss_functions:
             # 你可以根据需要调整损失的权重或合并策略
             # combined_loss = mse + (1 - ssim)
             # total_loss += combined_loss
-            total_loss += mse
+            total_loss += weights[idx] * mse
+
         return total_loss
+
+if __name__=='__main__':
+    loss = LossFunctions()
+    print(loss.calculate_weights(binary_masks='1000'))
