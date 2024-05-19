@@ -4,7 +4,7 @@ from networks.S_UNet import S_UNet
 import torch
 import yaml
 from init_weight import ModelInitializer
-from dataset_conversion.BraTsData import Dataset_brats, get_dataloader
+from dataset_conversion.BraTsData_slice import get_dataloader
 from loss_function import LossFunctions
 from evaluations.eval import evaluate_model
 import datetime
@@ -38,8 +38,8 @@ def get_args():
 if __name__ == '__main__':
     batch_size = 1
     slice_size = 16
-    learning_rate = 2e-4
-    epochs = 100
+    learning_rate = 1e-3
+    epochs = 120
     train_binary_mask = '1000'
     test_binary_mask = '1000'
 
@@ -48,12 +48,13 @@ if __name__ == '__main__':
     print("Training on:", device)
 
     # 定义网络模型
-    net = S_UNet(in_channels=1, base_filters=32, bias=False)
+    net = UNet(in_channels=1, out_channels=1, bilinear=True)
+    # net = S_UNet(in_channels=1, base_filters=32, bias=False)
     net.to(device)
 
     # 读取预训练模型，或从头训练
     pretrain = False
-    load_dir = None
+    load_dir = "result/models/UNet/1000-05-17-22-21-24/best_model_epoch_3.ckpt"
     if pretrain is True and load_dir is not None:
         net.load_state_dict(torch.load(load_dir))
         print(f"load model from {load_dir}")
@@ -64,9 +65,9 @@ if __name__ == '__main__':
         print("Training a new model")
 
     # 定义模型保存路径
-    save_dir = "result/models/S_UNet/"
+    save_dir = "result/models/UNet/"
     current_time = datetime.datetime.now().strftime("-%m-%d-%H-%M-%S")
-    directory = os.path.join(save_dir,train_binary_mask+current_time)
+    directory = os.path.join(save_dir, train_binary_mask+current_time)
     os.makedirs(directory, exist_ok=True)  # 创建目录
     print("Save model in directory:", directory)
     # model_path = os.path.join(directory, 'best.ckpt')
@@ -74,7 +75,7 @@ if __name__ == '__main__':
     # 设置日志
     log_dir = os.path.join(save_dir, "logs")
     os.makedirs(log_dir, exist_ok=True)
-    log_filename = current_time + ".log"
+    log_filename = train_binary_mask + current_time + ".log"
     logging.basicConfig(filename=os.path.join(log_dir, log_filename), level=logging.INFO)
 
     # 创建 TensorBoard 记录器
@@ -87,7 +88,8 @@ if __name__ == '__main__':
 
     # 定义学习率调度器
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
-
+    scheduler_plateau = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5)
+    scheduler_cosine_restarts = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=10, T_mult=2)
     # 定义损失函数
     loss = LossFunctions()
 
@@ -97,8 +99,10 @@ if __name__ == '__main__':
     # 训练数据集与测试数据集
     BraTS_train_root = "E:\Work\dataset\ASNR-MICCAI-BraTS2023-GLI-Challenge-TrainingData"
     BraTS_test_root = "E:\Work\dataset\ASNR-MICCAI-BraTS2023-GLI-Challenge-ValidationData"
-    train_loader = get_dataloader(slice_size=slice_size, root_dir=BraTS_train_root, batch_size=1, shuffle=True, num_workers=2, mask_rate=1, binary_mask=train_binary_mask, mode='train')
-    test_loader = get_dataloader(slice_size=slice_size, root_dir=BraTS_test_root, batch_size=1, shuffle=False, num_workers=4, mask_rate=1, binary_mask=test_binary_mask, mode='eval')
+    train_loader = get_dataloader(slice_size=slice_size, root_dir=BraTS_train_root, batch_size=1, shuffle=True,
+                                  num_workers=1, mask_rate=0.75, binary_mask=train_binary_mask, mode='train')
+    test_loader = get_dataloader(slice_size=slice_size, root_dir=BraTS_test_root, batch_size=1, shuffle=False,
+                                 num_workers=4, mask_rate=1, binary_mask=test_binary_mask, mode='eval')
 
     # 初始化用于跟踪最佳模型的变量
     best_loss = float('inf')
@@ -111,6 +115,7 @@ if __name__ == '__main__':
         # 确保模型处于训练模式
         net.train()
         running_loss = 0.0
+        avg_loss = 0.0
         slice_total = slice_size * train_loader.__len__()
         i = 0
         with tqdm(train_loader, desc=f"Epoch {epoch + 1}/{epochs}", unit="batch-person") as pbar:
@@ -153,7 +158,8 @@ if __name__ == '__main__':
             # 记录训练损失到 TensorBoard
             writer.add_scalar('Loss/train', avg_loss, epoch)
             # 调整学习率
-            scheduler.step()
+            # scheduler_plateau.step(avg_loss)
+            scheduler_cosine_restarts.step()
 
         # 验证模型性能
         net.eval()  # 设置模型为评估模式

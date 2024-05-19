@@ -3,19 +3,19 @@ import numpy as np
 # from dataset_conversion import BraTsData
 
 
-def random_masked_area(image_batch, mask_kernel_size, single_image_size, binary_mask, mask_rate):
+def random_masked_area(image_batch, mask_kernel_size, slice_size, binary_mask, mask_rate):
     """
     为图像批次创建遮蔽区域。
 
     :param image_batch: ndarray, 图像的批次，形状为 (slice_num, height, width)
     :param mask_kernel_size: int, 遮蔽块的尺寸
-    :param single_image_size: tuple, 每个子图的尺寸 (height, width)
+    :param slice_size: tuple, 每个子图的尺寸 (height, width)
     :param binary_mask: str, 四位二进制字符串，表示哪些区域需要遮蔽
     :param mask_rate: float, 遮蔽的比例
     :return: ndarray, 遮蔽后的图像批次
     """
     slice_num, height, width = image_batch.shape
-    sub_height, sub_width = single_image_size
+    sub_height, sub_width = slice_size.slice_size
     # 初始化原图的遮蔽掩码
     masked_image = np.ones(image_batch.shape)
 
@@ -26,7 +26,7 @@ def random_masked_area(image_batch, mask_kernel_size, single_image_size, binary_
     for slice_index in range(slice_num):
 
         # 构建遮蔽块计数图的维度
-        masked_sub_image_width = sub_width // mask_kernel_size
+        masked_sub_image_width = slice_size // mask_kernel_size
         masked_sub_image_height = sub_height // mask_kernel_size
         masked_sub_image_count = np.zeros((masked_sub_image_width, masked_sub_image_height))
 

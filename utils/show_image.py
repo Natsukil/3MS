@@ -1,10 +1,10 @@
-from dataset_conversion.BraTsData import Dataset_brats, get_dataloader
+from dataset_conversion.BraTsData_person import Dataset_brats, get_dataloader
 from utils.swap_dimensions import swap_batch_slice_dimensions
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import torch
 
-root_dir = 'E:\Work\dataset\ASNR-MICCAI-BraTS2023-GLI-Challenge-TrainingData'
+root_dir = "E:\Work\dataset\ASNR-MICCAI-BraTS2023-GLI-Challenge-TrainingData"
 
 
 def get_dataloader_iterator():
@@ -16,21 +16,21 @@ def show_mask_origin(X, y, index):
 
     print("original:", X.shape, y.shape)
 
-    X_new, y_new = swap_batch_slice_dimensions(X), swap_batch_slice_dimensions(y)
-    print("new:", X_new.shape, y_new.shape)
+    # X_new, y_new = swap_batch_slice_dimensions(X), swap_batch_slice_dimensions(y)
+    # print("new:", X_new.shape, y_new.shape)
     # 设置图像显示的大小
     plt.figure(figsize=(10, 5))
 
     # 显示 masked_image
     plt.subplot(1, 2, 1)  # 1行3列的第1个位置
-    plt.imshow(X_new[index, 0, :, :], cmap='gray')
+    plt.imshow(X[index, 0, :, :], cmap='gray')
     plt.colorbar()  # 添加颜色条
     plt.title('Masked Image')  # 添加标题
     plt.axis('off')  # 关闭坐标轴显示
 
     # 显示 masked_result
     plt.subplot(1, 2, 2)  # 1行3列的第2个位置
-    plt.imshow(y_new[index, 0, :, :], cmap='gray')
+    plt.imshow(y[index, 0, :, :], cmap='gray')
     plt.colorbar()  # 添加颜色条
     plt.title('Masked Result')
     plt.axis('off')  # 关闭坐标轴显示

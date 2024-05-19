@@ -1,7 +1,8 @@
-from dataset_conversion.BraTsData import Dataset_brats
+from dataset_conversion.BraTsData_person import Dataset_brats
 from torch.utils.data import DataLoader
 import torch
 from networks.UNet import UNet
+from networks.S_UNet import S_UNet
 from utils.swap_dimensions import swap_batch_slice_dimensions
 from training.loss_function import LossFunctions
 from eval import evaluate_model
@@ -16,6 +17,7 @@ def evaluation(load_dir, show_image=False):
 
     # 定义网络模型
     net = UNet(in_channels=1, out_channels=1)
+    # net = S_UNet(in_channels=1, base_filters=32, bias=False)
     net.to(device)
 
     net.load_state_dict(torch.load(load_dir, map_location=device))
@@ -24,7 +26,7 @@ def evaluation(load_dir, show_image=False):
     test_binary_mask = '1000'
 
     root_dir = "E:\Work\dataset\ASNR-MICCAI-BraTS2023-GLI-Challenge-ValidationData"
-    dataset = Dataset_brats(root_dir=root_dir, slice_size=2, binary_mask=test_binary_mask, mask_rate=1, mode='eval')
+    dataset = Dataset_brats(root_dir=root_dir, slice_deep=8, binary_mask=test_binary_mask, mask_rate=1, mode='eval')
     test_loader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=4, pin_memory=True)
 
     # 定义损失函数
@@ -49,7 +51,7 @@ def evaluation(load_dir, show_image=False):
             original_images = swap_batch_slice_dimensions(original_images)
 
             outputs = net(masked_images)
-
+            print(outputs.shape)
             if show_image:
                 original_images = original_images.to('cpu')
                 outputs = outputs.to('cpu')
@@ -57,14 +59,14 @@ def evaluation(load_dir, show_image=False):
 
                 # 显示 original_images
                 plt.subplot(1, 2, 1)  # 1行3列的第1个位置
-                plt.imshow(original_images[0, 0, :, :], cmap='gray')
+                plt.imshow(original_images[1, 0, :, :], cmap='gray')
                 plt.colorbar()  # 添加颜色条
                 plt.title('original_images')  # 添加标题
                 plt.axis('off')  # 关闭坐标轴显示
 
                 # 显示 masked_result
                 plt.subplot(1, 2, 2)  # 1行3列的第2个位置
-                plt.imshow(outputs[0, 0, :, :], cmap='gray')
+                plt.imshow(outputs[1, 0, :, :], cmap='gray')
                 plt.colorbar()  # 添加颜色条
                 plt.title('Masked Result')
                 plt.axis('off')  # 关闭坐标轴显示
@@ -100,4 +102,4 @@ def evaluation(load_dir, show_image=False):
 
 
 if __name__ == '__main__':
-    evaluation("result/models/UNet/1000-05-16-22-01-10/best_model_epoch_3.ckpt", show_image=True)
+    evaluation("result/models/UNet/1000-05-18-01-20-12/checkpoint_epoch_110.ckpt", show_image=True)

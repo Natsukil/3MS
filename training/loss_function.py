@@ -19,8 +19,10 @@ class LossFunctions:
             weights = [0.25] * 4  # 均匀分配权重
         else:
             # 遮蔽区域和非遮蔽区域的比率为3:1
-            masked_weight = 3 / 4 / mask_counts # 每个遮蔽区域的权重
-            unmasked_weight = 1 / 4 / (4 - mask_counts)  # 每个非遮蔽区域的权重
+            # 每个遮蔽区域的权重
+            masked_weight = 0.8 / mask_counts
+            # 每个非遮蔽区域的权重
+            unmasked_weight = 0.2 / (4 - mask_counts)
             weights = [masked_weight if b == '1' else unmasked_weight for b in binary_masks]
         return weights
 

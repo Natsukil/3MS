@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchinfo import summary
 
 
 class DoubleConv(nn.Module):
@@ -35,13 +36,13 @@ class DownSampleLayer(nn.Module):
 
 
 class Encoder(nn.Module):
-    def __init__(self, in_channels=1, base_filters=32, bias=False):
+    def __init__(self, in_channels=1, base_filters=32, dropout=0.0,bias=False):
         super(Encoder, self).__init__()
-        self.inc = DoubleConv(in_channels, base_filters, padding=193, dropout=0.1, bias=bias)
-        self.down1 = DownSampleLayer(base_filters, base_filters * 2, padding=97, dropout=0.1, bias=bias)
-        self.down2 = DownSampleLayer(base_filters * 2, base_filters * 4, padding=49, dropout=0.2, bias=bias)
-        self.down3 = DownSampleLayer(base_filters * 4, base_filters * 8, padding=25, dropout=0.2, bias=bias)
-        self.down4 = DownSampleLayer(base_filters * 8, base_filters * 16, padding=13, dropout=0.3, bias=bias)
+        self.inc = DoubleConv(in_channels, base_filters, padding=193, dropout=dropout, bias=bias)
+        self.down1 = DownSampleLayer(base_filters, base_filters * 2, padding=97, dropout=dropout, bias=bias)
+        self.down2 = DownSampleLayer(base_filters * 2, base_filters * 4, padding=49, dropout=dropout, bias=bias)
+        self.down3 = DownSampleLayer(base_filters * 4, base_filters * 8, padding=25, dropout=dropout, bias=bias)
+        self.down4 = DownSampleLayer(base_filters * 8, base_filters * 16, padding=13, dropout=dropout, bias=bias)
 
     def forward(self, x):
         x1 = self.inc(x)
@@ -106,11 +107,10 @@ class S_UNet(nn.Module):
 
 
 if __name__ == '__main__':
-    X = torch.randn((10, 1, 384, 384))  # 输入图像
+    X = torch.randn((64, 1, 384, 384))  # 输入图像
     base_filters = 32
-    net = S_UNet(in_channels=1, base_filters=base_filters,bias=True)
-    print(net)
-    print(net(X).shape)
+    net = S_UNet(in_channels=1, base_filters=base_filters, bias=True)
+    summary(net, input_size=(1, 1, 384, 384))
 
 
 

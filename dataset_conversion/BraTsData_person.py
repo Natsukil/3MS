@@ -31,7 +31,8 @@ from mask_generator.masker import random_masked_area
 
 
 class Dataset_brats(Dataset):
-    def __init__(self, root_dir, slice_size, mask_kernel_size=12, single_image_size=192, binary_mask='1111', mask_rate=0.5, mode='train'):
+    def __init__(self, root_dir, slice_deep, slice_size=192, mask_kernel_size=12, binary_mask='1111', mask_rate=0.5,
+                 mode='train'):
         """
         初始化函数，列出所有患者的数据目录。
         """
@@ -40,11 +41,11 @@ class Dataset_brats(Dataset):
         self.patients = [os.path.join(root_dir, name) for name in os.listdir(root_dir) if
                          os.path.isdir(os.path.join(root_dir, name))]
         # 遮蔽算法的超参数初始化
-        self.single_image_size = (single_image_size, single_image_size)
+        self.slice_size = slice_size
         self.mask_kernel_size = mask_kernel_size
         self.binary_mask = binary_mask
         self.mask_rate = mask_rate
-        self.slice_size = slice_size
+        self.slice_deep = slice_deep
 
     def __len__(self):
         return len(self.patients)
@@ -54,25 +55,16 @@ class Dataset_brats(Dataset):
         根据索引idx获取数据，处理后返回。
         """
         patient_path = self.patients[idx]
-        # 直接读取后批量输出原始图像
-        # t1c = self.read_image(os.path.join(patient_path, f"{os.path.basename(patient_path)}-t1c.nii.gz"))
-        # t1n = self.read_image(os.path.join(patient_path, f"{os.path.basename(patient_path)}-t1n.nii.gz"))
-        # t2w = self.read_image(os.path.join(patient_path, f"{os.path.basename(patient_path)}-t2w.nii.gz"))
-        # t2f = self.read_image(os.path.join(patient_path, f"{os.path.basename(patient_path)}-t2f.nii.gz"))
-        # return {
-        #     't1c': torch.from_numpy(t1c),
-        #     't1n': torch.from_numpy(t1n),
-        #     't2w': torch.from_numpy(t2w),
-        #     'flair': torch.from_numpy(t2f)
-        # }
         # 预处理并拼接图像
         combined_image = self.preprocess_directory(patient_path)
         # 生成遮蔽掩码
-        masked_image = random_masked_area(combined_image, self.mask_kernel_size, self.single_image_size, self.binary_mask, self.mask_rate)
+        masked_image = random_masked_area(combined_image, self.mask_kernel_size, self.slice_size, self.binary_mask,
+                                          self.mask_rate)
         # 生成遮蔽后图像
         masked_result = np.where(masked_image == 1, combined_image, -1)
         # 返回遮蔽后图像X和原始图像y
-        return torch.tensor(masked_result, dtype=torch.float32), torch.tensor(combined_image, dtype=torch.float32)  # Convert numpy array to torch tensor
+        # Convert numpy array to torch tensor
+        return torch.tensor(masked_result, dtype=torch.float32), torch.tensor(combined_image, dtype=torch.float32), patient_path
 
     def preprocess_directory(self, directory):
         """
@@ -86,10 +78,10 @@ class Dataset_brats(Dataset):
         t2f = self.read_image(os.path.join(directory, f"{os.path.basename(directory)}-t2f.nii.gz"))
 
         # 归一化、剪裁、随机翻转和拼接
-        t1c = self.resize_and_crop(self.normalize(t1c), new_depth=self.slice_size)
-        t1n = self.resize_and_crop(self.normalize(t1n), new_depth=self.slice_size)
-        t2w = self.resize_and_crop(self.normalize(t2w), new_depth=self.slice_size)
-        t2f = self.resize_and_crop(self.normalize(t2f), new_depth=self.slice_size)
+        t1c = self.resize_and_crop(self.normalize(t1c), slice_deep=self.slice_deep, slice_size=self.slice_size)
+        t1n = self.resize_and_crop(self.normalize(t1n), slice_deep=self.slice_deep, slice_size=self.slice_size)
+        t2w = self.resize_and_crop(self.normalize(t2w), slice_deep=self.slice_deep, slice_size=self.slice_size)
+        t2f = self.resize_and_crop(self.normalize(t2f), slice_deep=self.slice_deep, slice_size=self.slice_size)
 
         # 决定一个随机翻转操作并应用到所有图像
         flip_action = random.choice([0, 1, 2])  # 从三种操作中随机选择
@@ -113,11 +105,28 @@ class Dataset_brats(Dataset):
         image = (image / max_val) * 2 - 1
         return image
 
-    def resize_and_crop(self, image, new_depth=32, new_height=192, new_width=192):
-        start_d = (image.shape[0] - new_depth) // 2
-        start_h = (image.shape[1] - new_height) // 2
-        start_w = (image.shape[2] - new_width) // 2
-        return image[start_d:start_d + new_depth, start_h:start_h + new_height, start_w:start_w + new_width]
+    def resize_and_crop(self, image, slice_deep=128, slice_size=192):
+        """
+        从图像中均匀采样多个切片，并返回包含这些切片的新图像。
+
+        :param image: 输入的 3D 图像，形状为 (depth, height, width)
+        :param slice_deep: 要裁剪的深度大小
+        :param slice_size: 要裁剪的高度、宽度大小
+        :return: 新的 3D 图像，包含从原始图像中均匀采样的切片
+        """
+
+        # 计算图像的中间位置
+        center_d = image.shape[0] // 2
+        start_d = max(center_d - slice_deep // 2, 0)
+
+        # 中间裁剪
+        cropped_center = image[start_d:start_d + slice_deep, :, :]
+
+        # 确保裁剪的高度和宽度在范围内
+        start_size = max((image.shape[1] - slice_size) // 2, 0)
+        cropped_center = cropped_center[:, start_size:start_size + slice_size, start_size:start_size + slice_size]
+
+        return cropped_center
 
     def random_flip(self, image, action):
         """
@@ -133,9 +142,14 @@ class Dataset_brats(Dataset):
         return image
 
 
-def get_dataloader(root_dir, batch_size=1, slice_size=2, shuffle=True, num_workers=1, mask_kernel_size=12, single_image_size=192, binary_mask='1111', mask_rate=0.5, mode='train'):
-    dataset = Dataset_brats(root_dir=root_dir, slice_size=slice_size, mask_kernel_size=mask_kernel_size, single_image_size=single_image_size, binary_mask=binary_mask, mask_rate=mask_rate, mode=mode)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=True)
+def get_dataloader(root_dir, batch_size=1, slice_deep=2, slice_size=192, num_workers=1,  mask_kernel_size=12,
+                   binary_mask='1111', mask_rate=0.5, mode='train'):
+    is_shuffle = False
+    if mode == 'train':
+        is_shuffle = True
+    dataset = Dataset_brats(root_dir=root_dir, slice_deep=slice_size, slice_size=slice_size,
+                            binary_mask=binary_mask, mask_kernel_size=mask_kernel_size, mask_rate=mask_rate, mode=mode)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=is_shuffle, num_workers=num_workers, pin_memory=True)
     return dataloader
 
 

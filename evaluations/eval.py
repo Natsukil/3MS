@@ -1,6 +1,7 @@
 from skimage.metrics import structural_similarity as ssim
 import numpy as np
 import torch
+from pytorch_msssim import ssim
 from evaluations.metrics import *
 
 
@@ -42,7 +43,7 @@ def evaluate_model(target, ref, device='cuda', binary_masks=None):
 
     if torch.cuda.is_available() and device == 'cuda':
         psnr_func = psnr_gpu
-        ssim_func = ssim_gpu
+        ssim_func = ssim
     else:
         psnr_func = psnr_np
         ssim_func = ssim_np
