@@ -142,12 +142,13 @@ class Dataset_brats(Dataset):
         return image
 
 
-def get_dataloader(root_dir, batch_size=1, slice_deep=2, slice_size=192, num_workers=1,  mask_kernel_size=12,
-                   binary_mask='1111', mask_rate=0.5, mode='train'):
+def get_brats_dataloader(root_dir, batch_size=1, slice_deep=16.
+                         , slice_size=192, num_workers=1, mask_kernel_size=12,
+                         binary_mask='1111', mask_rate=0.5, mode='train'):
     is_shuffle = False
     if mode == 'train':
         is_shuffle = True
-    dataset = Dataset_brats(root_dir=root_dir, slice_deep=slice_size, slice_size=slice_size,
+    dataset = Dataset_brats(root_dir=root_dir, slice_deep=slice_deep, slice_size=slice_size,
                             binary_mask=binary_mask, mask_kernel_size=mask_kernel_size, mask_rate=mask_rate, mode=mode)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=is_shuffle, num_workers=num_workers, pin_memory=True)
     return dataloader

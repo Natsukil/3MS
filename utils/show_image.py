@@ -1,4 +1,4 @@
-from dataset_conversion.BraTsData_person import Dataset_brats, get_dataloader
+from dataset_conversion.BraTsData_person import Dataset_brats, get_brats_dataloader
 from utils.swap_dimensions import swap_batch_slice_dimensions
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -8,8 +8,8 @@ root_dir = "E:\Work\dataset\ASNR-MICCAI-BraTS2023-GLI-Challenge-TrainingData"
 
 
 def get_dataloader_iterator():
-    dataloader = get_dataloader(slice_size=100, root_dir=root_dir, batch_size=1, shuffle=False, num_workers=4,
-                                mask_rate=1, binary_mask='1000', mode='eval')
+    dataloader = get_brats_dataloader(slice_size=100, root_dir=root_dir, batch_size=1, shuffle=False, num_workers=4,
+                                      mask_rate=1, binary_mask='1000', mode='eval')
     return iter(dataloader)
 
 def show_mask_origin(X, y, index):
@@ -44,7 +44,7 @@ def show_mask_origin(X, y, index):
 
 
 def calculate_mutil_model_pixel_value():
-    dataloader = get_dataloader(root_dir, batch_size=1, num_workers=8)
+    dataloader = get_brats_dataloader(root_dir, batch_size=1, num_workers=8)
     data_iter = iter(dataloader)
     # t1_min, t2c_min, t2f_min, flair_min = float('inf'),float('inf'),float('inf'),float('inf')
     global_min = float('inf')

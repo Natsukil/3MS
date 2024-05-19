@@ -15,7 +15,7 @@ def random_masked_area(image_batch, mask_kernel_size, slice_size, binary_mask, m
     :return: ndarray, 遮蔽后的图像批次
     """
     slice_num, height, width = image_batch.shape
-    sub_height, sub_width = slice_size.slice_size
+    sub_height, sub_width = slice_size, slice_size
     # 初始化原图的遮蔽掩码
     masked_image = np.ones(image_batch.shape)
 
