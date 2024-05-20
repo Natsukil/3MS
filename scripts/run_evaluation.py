@@ -4,7 +4,7 @@ import torch
 from networks.UNet import UNet
 from networks.S_UNet import S_UNet
 from utils.swap_dimensions import swap_batch_slice_dimensions
-from training.loss_function import LossFunctions
+from training.loss_functions import LossFunctions
 from eval import evaluate_model
 from tqdm import tqdm
 import matplotlib.pyplot as plt

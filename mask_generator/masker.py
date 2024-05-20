@@ -1,6 +1,6 @@
 import random
 import numpy as np
-# from dataset_conversion import BraTsData
+# from dataset import BraTsData
 
 
 def random_masked_area(image_batch, mask_kernel_size, slice_size, binary_mask, mask_rate):

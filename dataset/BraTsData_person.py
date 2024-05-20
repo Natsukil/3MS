@@ -64,7 +64,7 @@ class Dataset_brats(Dataset):
         masked_result = np.where(masked_image == 1, combined_image, -1)
         # 返回遮蔽后图像X和原始图像y
         # Convert numpy array to torch tensor
-        return torch.tensor(masked_result, dtype=torch.float32), torch.tensor(combined_image, dtype=torch.float32), patient_path
+        return torch.tensor(masked_result, dtype=torch.float32), torch.tensor(combined_image, dtype=torch.float32)
 
     def preprocess_directory(self, directory):
         """

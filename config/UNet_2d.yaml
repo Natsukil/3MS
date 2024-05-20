@@ -1,0 +1,29 @@
+data:
+  train: "data/raw/ASNR-MICCAI-BraTS2023-GLI-Challenge-TrainingData"
+  valid:
+  test: "data/raw/ASNR-MICCAI-BraTS2023-GLI-Challenge-ValidationData"
+train:
+  batch_size: 1
+  step_slice: 16
+
+  slice_deep: 128
+  slice_size: 192
+
+  learning_rate: 1e-3
+  epochs: 120
+  device: cuda:0
+
+  pretrain: False
+  model: "UNet"
+
+  load_dir: "result/models/UNet/1000-05-17-22-21-24/"
+  result_dir: "result/models/"
+
+mask:
+  mask_kernel_size: 3
+  train_binary_mask: "1000"
+  test_binary_mask: "1000"
+  mask_rate: 0.75
+
+loss:
+  mask_rate: 0.8
