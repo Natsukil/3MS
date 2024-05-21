@@ -1,13 +1,12 @@
 import sys
-
 import torch
-from networks.get_network import get_network
-from training.init_weight import  ModelInitializer
-from training.loss_functions import LossFunctions
-from training.schedulers import SchedulerFactory
-from training.train import train
-import os
-from utils.config import load_config, get_args
+from networks import get_network
+from training import ModelInitializer
+from training import LossFunctions
+from training import SchedulerFactory
+from evaluations import evaluate_model
+from training import train
+from utils import load_config, get_args
 
 
 def main(args):
@@ -18,7 +17,7 @@ def main(args):
         args.device if args.device else config['train']['device'] if torch.cuda.is_available() else 'cpu')
     model_name = args.model if args.model else config['train']['model']
     pretrain = args.pretrain if args.pretrain is not None else config['train']['pretrain']
-    load_dir = args.load_dir if args.load_dir else config['train']['load_dir']
+    load_dir = args.load_dir if args.load_dir else config['train']['ckpt']
 
     # get network
     net = get_network(model_name).to(device)
@@ -30,6 +29,7 @@ def main(args):
         except Exception as e:
             print(e)
             print('load pretrain model failed')
+            sys.exit(-1)
     else:
         initializer = ModelInitializer(method=config['train']['init_method'], uniform=False)
         initializer.initialize(net)
@@ -38,18 +38,24 @@ def main(args):
     criterion = LossFunctions()
 
     # optimizer
-    optimizer = torch.optim.Adam(net.parameters(), lr=config['train']['lr'])
+    optimizer = torch.optim.Adam(net.parameters(), lr=float(config['train']['learning_rate']))
 
     # learning rate scheduler
-    scheduler = SchedulerFactory.get_scheduler(config['train']['scheduler'], optimizer)
+    scheduler = SchedulerFactory.get_scheduler(optimizer, config['train']['scheduler'])
 
+    # eval
+    # metric = MetricFactory
+    metric = evaluate_model
     try:
-        train(config, net, device, criterion, optimizer, scheduler)
+        train(config,
+              net,
+              device,
+              criterion,
+              optimizer, scheduler,
+              metric,
+              )
     except KeyboardInterrupt:
-        try:
-            sys.exit(0)
-        except SystemExit:
-            os._exit(0)
+        sys.exit(0)
 
 
 if __name__ == '__main__':

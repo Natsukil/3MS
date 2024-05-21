@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torchinfo import summary
 
 
@@ -36,7 +35,7 @@ class DownSampleLayer(nn.Module):
 
 
 class Encoder(nn.Module):
-    def __init__(self, in_channels=1, base_filters=32, dropout=0.0,bias=False):
+    def __init__(self, in_channels=1, base_filters=32, dropout=0.0, bias=False):
         super(Encoder, self).__init__()
         self.inc = DoubleConv(in_channels, base_filters, padding=193, dropout=dropout, bias=bias)
         self.down1 = DownSampleLayer(base_filters, base_filters * 2, padding=97, dropout=dropout, bias=bias)
@@ -54,9 +53,9 @@ class Encoder(nn.Module):
 
 
 class UpSampleLayer(nn.Module):
-    def __init__(self, in_channels, out_channels, padding=0, dropout=0, mode='nearest', Transpose=False, bias=False):
+    def __init__(self, in_channels, out_channels, padding=0, dropout=0, mode='nearest', transpose=False, bias=False):
         super(UpSampleLayer, self).__init__()
-        if Transpose:
+        if transpose:
             self.up = nn.ConvTranspose2d(in_channels, in_channels//2, kernel_size=2, stride=2, bias=bias)
         else:
             self.up = nn.Sequential(nn.Upsample(scale_factor=2, mode=mode),
@@ -75,7 +74,7 @@ class UpSampleLayer(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, base_filters=16,bias=False):
+    def __init__(self, base_filters=16, bias=False):
         super(Decoder, self).__init__()
         self.up1 = UpSampleLayer(base_filters * 16, base_filters * 8, padding=25, dropout=0, bias=bias)
         self.up2 = UpSampleLayer(base_filters * 8, base_filters * 4, padding=49, dropout=0, bias=bias)
@@ -106,11 +105,8 @@ class S_UNet(nn.Module):
         return y_hat
 
 
-if __name__ == '__main__':
-    X = torch.randn((64, 1, 384, 384))  # 输入图像
-    base_filters = 32
-    net = S_UNet(in_channels=1, base_filters=base_filters, bias=True)
-    summary(net, input_size=(1, 1, 384, 384))
-
-
-
+# if __name__ == '__main__':
+#     X = torch.randn((64, 1, 384, 384))  # 输入图像
+#     base_filters = 32
+#     net = S_UNet(in_channels=1, base_filters=base_filters, bias=True)
+#     summary(net, input_size=(1, 1, 384, 384))

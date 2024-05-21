@@ -1,7 +1,3 @@
-from skimage.metrics import structural_similarity as ssim
-import numpy as np
-import torch
-from pytorch_msssim import ssim
 from evaluations.metrics import *
 
 
@@ -43,10 +39,10 @@ def evaluate_model(target, ref, device='cuda', binary_masks=None):
 
     if torch.cuda.is_available() and device == 'cuda':
         psnr_func = psnr_gpu
-        ssim_func = ssim
+        # ssim_func = ssim
     else:
         psnr_func = psnr_np
-        ssim_func = ssim_np
+        # ssim_func = ssim_np
 
     # 遍历所有batch和slice
     for i in range(batch_size):
@@ -61,13 +57,14 @@ def evaluate_model(target, ref, device='cuda', binary_masks=None):
 
             # 计算PSNR和SSIM
             cur_psnr = psnr_func(target_region, output_region)
-            cur_ssim = ssim_func(target_region, output_region)
+            # cur_ssim = ssim_func(target_region, output_region)
 
             avg_psnr[quadrant - 1] += cur_psnr
-            avg_ssim[quadrant - 1] += cur_ssim
+            # avg_ssim[quadrant - 1] += cur_ssim
 
     # 计算平均值
     avg_psnr = [x / batch_size for x in avg_psnr]
-    avg_ssim = [x / batch_size for x in avg_ssim]
+    # avg_ssim = [x / batch_size for x in avg_ssim]
 
-    return avg_psnr, avg_ssim
+    # return avg_psnr, avg_ssim
+    return avg_psnr

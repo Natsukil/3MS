@@ -9,6 +9,8 @@ train:
   slice_deep: 128
   slice_size: 192
 
+  init_method: "xavier"
+  scheduler: 'cosine_wr'
   learning_rate: 1e-3
   epochs: 120
   device: cuda:0
@@ -16,14 +18,15 @@ train:
   pretrain: False
   model: "UNet"
 
-  load_dir: "result/models/UNet/1000-05-17-22-21-24/"
+  ckpt: "result/models/UNet/1000-05-17-22-21-24/"
   result_dir: "result/models/"
 
 mask:
   mask_kernel_size: 3
   train_binary_mask: "1000"
   test_binary_mask: "1000"
-  mask_rate: 0.75
+  train_mask_rate: 0.75
+  test_mask_rate: 1
 
 loss:
   mask_rate: 0.8

@@ -1,4 +1,5 @@
-from dataset_conversion.BraTsData_person import Dataset_brats, get_brats_dataloader
+from datasets import get_brats_dataloader
+from evaluations import extract_region
 from utils.swap_dimensions import swap_batch_slice_dimensions
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -70,7 +71,7 @@ def calculate_mutil_model_pixel_value():
         # t2f_min = min(t2f_min, current_t2f_min.item())
         # flair_min = min(flair_min, current_flair_min.item())
     print(f"Minimum values across the dataset:\n Global: {global_min}\n Global: {global_max}")
-    # print(f"Minimum values across the dataset:\n T1: {t1_min}\n T2c: {t2c_min}\n T2f: {t2f_min}\n FLAIR: {flair_min}")
+    # print(f"Minimum values across the datasets:\n T1: {t1_min}\n T2c: {t2c_min}\n T2f: {t2f_min}\n FLAIR: {flair_min}")
 
 
 def test_slice_result(X, y, index):
@@ -102,23 +103,7 @@ def test_slice_result(X, y, index):
     plt.suptitle(f'Visualizing Different Regions of a Single Batch: Slice{index}')
     plt.show()
 
-def extract_region(img, quadrant, size):
-    """
-    根据象限从图像中提取区域。
-    :param img: 输入图像 [height, width]
-    :param quadrant: 象限编号 (1, 2, 3, 4)
-    :param size: 每个区域的尺寸 (height, width)
-    :return: 提取的区域
-    """
-    h, w = size
-    if quadrant == 1:
-        return img[:h, :w]  # 左上
-    elif quadrant == 2:
-        return img[:h, -w:]  # 右上
-    elif quadrant == 3:
-        return img[-h:, :w]  # 左下
-    elif quadrant == 4:
-        return img[-h:, -w:]  # 右下
+
 def test_eval_regions(X, y, index):
     batch_size, channels, height, width = X.shape
     region_size = (height//2, width//2)

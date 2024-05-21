@@ -1,5 +1,6 @@
 import torch.nn as nn
 
+
 class ModelInitializer:
     def __init__(self, method='xavier', uniform=True):
         """

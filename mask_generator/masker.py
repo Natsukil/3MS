@@ -1,8 +1,8 @@
 import random
 import numpy as np
-# from dataset import BraTsData
 
 
+# from datasets import BraTsData
 def random_masked_area(image_batch, mask_kernel_size, slice_size, binary_mask, mask_rate):
     """
     为图像批次创建遮蔽区域。
@@ -19,8 +19,6 @@ def random_masked_area(image_batch, mask_kernel_size, slice_size, binary_mask, m
     # 初始化原图的遮蔽掩码
     masked_image = np.ones(image_batch.shape)
 
-
-
     # 检查每一子图是否需要遮蔽
     # for index in range(batch_size):
     for slice_index in range(slice_num):
@@ -35,9 +33,7 @@ def random_masked_area(image_batch, mask_kernel_size, slice_size, binary_mask, m
                 continue
             # 计算子图的位置
             row_start = (i // 2) * sub_height
-            row_end = row_start + sub_height
             col_start = (i % 2) * sub_width
-            col_end = col_start + sub_width
 
             # 收集所有可以被选择为遮蔽块的位置
             all_blocks = [(r, c) for r in range(0, sub_height, mask_kernel_size)
@@ -51,18 +47,17 @@ def random_masked_area(image_batch, mask_kernel_size, slice_size, binary_mask, m
 
             # 选择块并设置遮蔽
             selected_blocks = all_blocks[:int(mask_count)]
-            for r, c in selected_blocks:
-                masked_image[slice_index, row_start + r:row_start + r + mask_kernel_size,
-                col_start + c:col_start + c + mask_kernel_size] = 0  # 设置遮蔽块
-                masked_sub_image_count[r // mask_kernel_size:(r // mask_kernel_size) + 1,
-                c // mask_kernel_size:(c // mask_kernel_size) + 1] += 1
+            for row, col in selected_blocks:
+                masked_image[slice_index, row_start + row:row_start + row + mask_kernel_size,
+                             col_start + col:col_start + col + mask_kernel_size] = 0  # 设置遮蔽块
+                masked_sub_image_count[row // mask_kernel_size:(row // mask_kernel_size) + 1,
+                                       col // mask_kernel_size:(col // mask_kernel_size) + 1] += 1
 
     return masked_image
 
-
 # if __name__ == '__main__':
 #     import matplotlib.pyplot as plt
-#     dataloader = BraTsData.get_dataloader("E:\Work\dataset\ASNR-MICCAI-BraTS2023-GLI-Challenge-TrainingData",
+#     dataloader = BraTsData.get_dataloader("E:\Work\datasets\ASNR-MICCAI-BraTS2023-GLI-Challenge-TrainingData",
 #                                           batch_size=1)
 #     data_iter = iter(dataloader)
 #     images = next(data_iter)  # 获取一个批次的图像

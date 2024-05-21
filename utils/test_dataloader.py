@@ -1,7 +1,7 @@
 import time
 
-from dataset_conversion.BraTsData_person import get_brats_dataloader
-from tqdm import  tqdm
+from datasets import get_brats_dataloader
+from tqdm import tqdm
 from swap_dimensions import swap_batch_slice_dimensions
 from visualization import show_mask_origin
 
