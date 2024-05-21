@@ -1,7 +1,9 @@
 data:
-  train: "data/raw/ASNR-MICCAI-BraTS2023-GLI-Challenge-TrainingData"
+  train: "data_raw/ASNR-MICCAI-BraTS2023-GLI-Challenge-TrainingData"
+#  train: "data_select/train"
   valid:
-  test: "data/raw/ASNR-MICCAI-BraTS2023-GLI-Challenge-ValidationData"
+  test: "data_raw/ASNR-MICCAI-BraTS2023-GLI-Challenge-ValidationData"
+#  test: "data_select/test"
 train:
   batch_size: 1
   step_slice: 16
@@ -10,6 +12,7 @@ train:
   slice_size: 192
 
   init_method: "xavier"
+  optimizer: "Adam"
   scheduler: 'cosine_wr'
   learning_rate: 1e-3
   epochs: 120

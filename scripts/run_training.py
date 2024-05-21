@@ -3,6 +3,7 @@ import torch
 from networks import get_network
 from training import ModelInitializer
 from training import LossFunctions
+from training import OptimizerFactory
 from training import SchedulerFactory
 from evaluations import evaluate_model
 from training import train
@@ -38,21 +39,21 @@ def main(args):
     criterion = LossFunctions()
 
     # optimizer
-    optimizer = torch.optim.Adam(net.parameters(), lr=float(config['train']['learning_rate']))
+    optimizer_f = OptimizerFactory(config['train']['optimizer'], net, lr=float(config['train']['learning_rate']))
 
     # learning rate scheduler
-    scheduler = SchedulerFactory.get_scheduler(optimizer, config['train']['scheduler'])
+    scheduler_f = SchedulerFactory(optimizer_f.optimizer, config['train']['scheduler'])
 
     # eval
     # metric = MetricFactory
     metric = evaluate_model
     try:
-        train(config,
-              net,
-              device,
-              criterion,
-              optimizer, scheduler,
-              metric,
+        train(config=config,
+              net=net,
+              device=device,
+              criterion=criterion,
+              optimizer=optimizer_f, scheduler=scheduler_f,
+              metric=metric,
               )
     except KeyboardInterrupt:
         sys.exit(0)

@@ -108,10 +108,10 @@ class UNet(nn.Module):
         logits = self.outc(x)
         return logits
 
-# if __name__ == '__main__':
-#     X = torch.randn((10, 1, 384, 384))
-#     net = UNet(in_channels=1, out_channels=1)
-#     summary(net, input_size=(155, 1, 384, 384))
+if __name__ == '__main__':
+    X = torch.randn((10, 1, 384, 384))
+    net = UNet(in_channels=1, out_channels=1)
+    summary(net, input_size=(32, 1, 384, 384))
 
     # def use_checkpointing(self):
     #     self.inc = torch.utilss.checkpoint(self.inc)

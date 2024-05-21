@@ -54,3 +54,17 @@ BraTS2023 脑胶质瘤数据集
 
 ### Lr_scheduler
 torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
+
+## Train
+- 使用完整的参数
+```angular2html
+python scripts/run_training.py --config config/UNet_2d.yaml --device cuda:0 --model UNet --pretrain True --load_dir best.ckpt
+```
+- 使用config设置参数
+```angular2html
+python scripts/run_training.py
+```
+获取帮助
+```angular2html
+python scripts/run_training.py -h
+```

@@ -24,14 +24,14 @@ def show_mask_origin(X, y, index):
 
     # 显示 masked_image
     plt.subplot(1, 2, 1)  # 1行3列的第1个位置
-    plt.imshow(X[index, 0, :, :], cmap='gray')
+    plt.imshow(X[index, 0, :, :], cmap='gray', vmin=-1, vmax=1)
     plt.colorbar()  # 添加颜色条
     plt.title('Masked Image')  # 添加标题
     plt.axis('off')  # 关闭坐标轴显示
 
     # 显示 masked_result
     plt.subplot(1, 2, 2)  # 1行3列的第2个位置
-    plt.imshow(y[index, 0, :, :], cmap='gray')
+    plt.imshow(y[index, 0, :, :], cmap='gray', vmin=-1, vmax=1)
     plt.colorbar()  # 添加颜色条
     plt.title('Masked Result')
     plt.axis('off')  # 关闭坐标轴显示
