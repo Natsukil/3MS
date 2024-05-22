@@ -1,4 +1,9 @@
+from datasets import get_brats_dataloader
 from evaluations.metrics import *
+from utils import show_mask_origin, Logger
+from tqdm import tqdm
+
+from utils.swap_dimensions import swap_batch_slice_dimensions
 
 
 def extract_region(img, quadrant, size):
@@ -20,7 +25,7 @@ def extract_region(img, quadrant, size):
         return img[-h:, -w:]  # 右下
 
 
-def evaluate_model(target, ref, device='cuda', binary_masks=None):
+def calculate_metrics(target, ref, device='cuda', binary_masks=None):
     """
     计算模型在给定输入和目标之间的性能指标。
     :param binary_masks:
@@ -68,3 +73,83 @@ def evaluate_model(target, ref, device='cuda', binary_masks=None):
 
     # return avg_psnr, avg_ssim
     return avg_psnr
+
+
+def evaluation(config, net, device, criterion, show_image=False):
+    # 剪裁后切片的数量
+    slice_deep = config['train']['slice_deep']
+    # 剪裁后切片的宽高尺寸
+    slice_size = config['train']['slice_size']
+    # 批次大小，默认为1
+    batch_size = config['train']['batch_size']
+    # 每步使用的切片数量，默认小于slice_deep
+    step_slice = config['train']['step_slice']
+
+    # 遮蔽块的宽高尺寸
+    mask_kernel_size = config['mask']['mask_kernel_size']
+    # 测试时候的遮蔽选项
+    test_binary_mask = config['mask']['test_binary_mask']
+    # 测试时候的遮蔽率
+    test_mask_rate = config['mask']['test_mask_rate']
+
+    brats_test_root = config['data']['train']
+
+    test_loader = get_brats_dataloader(root_dir=brats_test_root, batch_size=batch_size, slice_deep=slice_deep,
+                                       slice_size=slice_size,
+                                       mask_kernel_size=mask_kernel_size, binary_mask=test_binary_mask,
+                                       mask_rate=test_mask_rate,
+                                       num_workers=2, mode='eval')
+    logger_c = Logger(None, dst='console')
+
+    # 每个epoch包含的step数量
+    step_per_epoch = slice_deep // step_slice
+    index = [0, 8, 15]
+    # 验证模型性能
+    net.eval()  # 设置模型为评估模式
+    test_loss = 0.0
+    avg_psnr = [0.0] * 4
+    # avg_ssim = [0.0] * 4
+    count = 0
+    loop = 3
+    torch.cuda.empty_cache()
+    with torch.no_grad():  # 关闭梯度计算
+        with tqdm(test_loader, desc="Validation", unit="batch_person") as pbar_test:
+            for masked_images, original_images in pbar_test:
+                masked_images = swap_batch_slice_dimensions(masked_images).to(device)
+                original_images = swap_batch_slice_dimensions(original_images).to(device)
+                for step in range(step_per_epoch):
+                    masked_images_step = masked_images[range(step, masked_images.shape[0],
+                                                             step_per_epoch), :, :, :]
+                    original_images_step = original_images[range(step, original_images.shape[0],
+                                                                 step_per_epoch), :, :, :]
+                    outputs = net(masked_images_step)
+
+                    # 计算损失
+                    test_loss += criterion.calculate_loss(outputs, original_images_step,
+                                                          binary_masks=test_binary_mask).item()
+                    # 计算 PSNR 和 SSIM
+                    current_psnr = calculate_metrics(outputs, original_images_step, binary_masks=test_binary_mask)
+                    if show_image and loop > 0:
+                        show_mask_origin(outputs, masked_images_step, original_images_step, index)
+                        loop-=1
+                    # 累加每个象限的 PSNR 和 SSIM
+                    for j in range(4):
+                        avg_psnr[j] += current_psnr[j]
+                    count += 1
+            pbar_test.update()
+
+    test_loss /= len(test_loader)
+    avg_psnr_total = [x / count for x in avg_psnr]
+    # avg_ssim_total = [x / count for x in avg_ssim]
+
+    # 打印结果和写入信息
+    logger_c.info(f"Validation/Loss: {test_loss:.4f}")
+
+    # 打印每种模态的详细 PSNR 和 SSIM
+    psnr_message = (f"Validation/PSNR "
+                    f"T1c: {avg_psnr_total[0]:.4f}, T1n: {avg_psnr_total[1]:.4f}, "
+                    f"T2w: {avg_psnr_total[2]:.4f}, T2f: {avg_psnr_total[3]:.4f}")
+    logger_c.info(psnr_message)
+
+
+

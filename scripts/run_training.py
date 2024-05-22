@@ -5,9 +5,9 @@ from training import ModelInitializer
 from training import LossFunctions
 from training import OptimizerFactory
 from training import SchedulerFactory
-from evaluations import evaluate_model
+from evaluations import calculate_metrics
 from training import train
-from utils import load_config, get_args
+from utils import load_config, get_args, load_checkpoint
 
 
 def main(args):
@@ -23,17 +23,7 @@ def main(args):
     # get network
     net = get_network(model_name).to(device)
 
-    # load network or init network weights
-    if pretrain:
-        try:
-            net.load_state_dict(torch.load(load_dir))
-        except Exception as e:
-            print(e)
-            print('load pretrain model failed')
-            sys.exit(-1)
-    else:
-        initializer = ModelInitializer(method=config['train']['init_method'], uniform=False)
-        initializer.initialize(net)
+
 
     # loss function
     criterion = LossFunctions()
@@ -46,14 +36,39 @@ def main(args):
 
     # eval
     # metric = MetricFactory
-    metric = evaluate_model
+    metric = calculate_metrics
+
+    # 是否从继续训练
+    if args.resume:
+        try:
+            last_epoch, best_loss, lr = load_checkpoint(args.resume_root, net, optimizer_f, scheduler_f)
+            config['train']['last_epoch'] = last_epoch
+            config['train']['best_loss'] = best_loss
+            config['train']['last_learning_rate'] = lr
+        except Exception as e:
+            print(e)
+            print('load from ckpt failed')
+            sys.exit(-1)
+    # 是否使用预训练模型
+    elif pretrain:
+        try:
+            net.load_state_dict(torch.load(load_dir))
+        except Exception as e:
+            print(e)
+            print('load pretrain model failed')
+            sys.exit(-1)
+    # 初始化模型
+    else:
+        initializer = ModelInitializer(method=config['train']['init_method'], uniform=False)
+        initializer.initialize(net)
+
     try:
         train(config=config,
               net=net,
               device=device,
               criterion=criterion,
-              optimizer=optimizer_f, scheduler=scheduler_f,
-              metric=metric,
+              optimizer_f=optimizer_f, scheduler_f=scheduler_f,
+              metric=metric, resume=args.resume,
               )
     except KeyboardInterrupt:
         sys.exit(0)

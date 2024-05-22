@@ -1,3 +1,4 @@
-from .eval import evaluate_model, extract_region
+from .eval import calculate_metrics, extract_region
 
-__all__ = ['evaluate_model', 'extract_region']
+__all__ = ['calculate_metrics', 'extract_region']
+

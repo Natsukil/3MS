@@ -1,52 +1,44 @@
 from datasets import get_brats_dataloader
-from evaluations import extract_region
+# from evaluations import extract_region
 from utils.swap_dimensions import swap_batch_slice_dimensions
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import torch
 
-root_dir = "E:\Work\dataset\ASNR-MICCAI-BraTS2023-GLI-Challenge-TrainingData"
+
+def show_mask_origin(y_hat, X, y, index):
+    y_hat = y_hat.to('cpu')
+    X = X.to('cpu')
+    y = y.to('cpu')
+    for i in index:
+        # 设置图像显示的大小
+        plt.figure(figsize=(15, 5))
+
+        # 显示 masked_image
+        plt.subplot(1, 3, 1)  # 1行3列的第1个位置
+        plt.imshow(y_hat[i, 0, :, :], cmap='gray', vmin=-1, vmax=1)
+        plt.colorbar()  # 添加颜色条
+        plt.title(f'Y_hat index {i}')  # 添加标题
+        plt.axis('off')  # 关闭坐标轴显示
+
+        # 显示 masked_image
+        plt.subplot(1, 3, 2)  # 1行3列的第1个位置
+        plt.imshow(X[i, 0, :, :], cmap='gray', vmin=-1, vmax=1)
+        plt.colorbar()  # 添加颜色条
+        plt.title(f'mask index {i}')  # 添加标题
+        plt.axis('off')  # 关闭坐标轴显示
+
+        # 显示 masked_result
+        plt.subplot(1, 3, 3)  # 1行3列的第2个位置
+        plt.imshow(y[i, 0, :, :], cmap='gray', vmin=-1, vmax=1)
+        plt.colorbar()  # 添加颜色条
+        plt.title(f'Y index {i}')
+        plt.axis('off')  # 关闭坐标轴显示
+
+        plt.show()
 
 
-def get_dataloader_iterator():
-    dataloader = get_brats_dataloader(slice_size=100, root_dir=root_dir, batch_size=1, shuffle=False, num_workers=4,
-                                      mask_rate=1, binary_mask='1000', mode='eval')
-    return iter(dataloader)
-
-def show_mask_origin(X, y, index):
-
-    print("original:", X.shape, y.shape)
-
-    # X_new, y_new = swap_batch_slice_dimensions(X), swap_batch_slice_dimensions(y)
-    # print("new:", X_new.shape, y_new.shape)
-    # 设置图像显示的大小
-    plt.figure(figsize=(10, 5))
-
-    # 显示 masked_image
-    plt.subplot(1, 2, 1)  # 1行3列的第1个位置
-    plt.imshow(X[index, 0, :, :], cmap='gray', vmin=-1, vmax=1)
-    plt.colorbar()  # 添加颜色条
-    plt.title('Masked Image')  # 添加标题
-    plt.axis('off')  # 关闭坐标轴显示
-
-    # 显示 masked_result
-    plt.subplot(1, 2, 2)  # 1行3列的第2个位置
-    plt.imshow(y[index, 0, :, :], cmap='gray', vmin=-1, vmax=1)
-    plt.colorbar()  # 添加颜色条
-    plt.title('Masked Result')
-    plt.axis('off')  # 关闭坐标轴显示
-    # 显示 mask
-    # plt.subplot(1, 2, 2)  # 1行3列的第2个位置
-    # plt.imshow(mask[50, 0, :, :], cmap='gray')
-    # plt.colorbar()  # 添加颜色条
-    # plt.title('Masked Result')
-    # plt.axis('off')  # 关闭坐标轴显示
-    plt.show()
-
-
-def calculate_mutil_model_pixel_value():
-    dataloader = get_brats_dataloader(root_dir, batch_size=1, num_workers=8)
-    data_iter = iter(dataloader)
+def calculate_mutil_model_pixel_value(dataloader):
     # t1_min, t2c_min, t2f_min, flair_min = float('inf'),float('inf'),float('inf'),float('inf')
     global_min = float('inf')
     global_max = float('-inf')
@@ -104,37 +96,4 @@ def test_slice_result(X, y, index):
     plt.show()
 
 
-def test_eval_regions(X, y, index):
-    batch_size, channels, height, width = X.shape
-    region_size = (height//2, width//2)
-    X_new, y_new = swap_batch_slice_dimensions(X), swap_batch_slice_dimensions(y)
-    regions = {
-        't1c': extract_region(y_new[index, 0, :, :], 1, region_size),  # 左上
-        't1n': extract_region(y_new[index, 0, :, :], 2, region_size),  # 右上
-        't2w': extract_region(y_new[index, 0, :, :], 3, region_size),  # 左下
-        't2f': extract_region(y_new[index, 0, :, :], 4, region_size),  # 右下
-    }
-    plt.figure(figsize=(10, 5))
 
-    for idx, (region_name, region) in enumerate(regions.items(), 1):
-        plt.subplot(2, 2, idx)
-        plt.imshow(region, cmap='gray')
-        plt.colorbar()
-        plt.title(f'{region_name} Region')
-        plt.axis('off')
-
-    plt.suptitle(f'Visualizing Different Regions of a Single Batch in evaluationc: Slice {index}')
-    plt.show()
-
-if __name__ == '__main__':
-    # 获取迭代器
-    data_iter = get_dataloader_iterator()
-    X, y = next(data_iter)  # 获取一个批次的图像
-    index_show=99
-    # 显示图片
-    show_mask_origin(X, y,index_show)
-    # 计算像素值
-    # calculate_mutil_model_pixel_value()
-    # 测试切分片
-    test_slice_result(X, y,index_show)
-    test_eval_regions(X, y,index_show)
