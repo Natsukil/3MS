@@ -18,7 +18,7 @@ train:
   optimizer: "Adam"
   scheduler: 'exp_lr'
   learning_rate: 2e-4
-  epochs: 100
+  epochs: 150
   device: cuda:0
 
   pretrain: False
@@ -40,7 +40,7 @@ test:
 
 mask:
   # 1, 2, 3, 6, 8, 12,
-  mask_kernel_size: 12
+  mask_kernel_size: 3
   train_binary_mask: "1111"
   test_binary_mask: "1000"
   train_mask_rate: 0.75

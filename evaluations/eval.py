@@ -45,10 +45,10 @@ def calculate_metrics(target, ref, device='cuda', binary_masks=None, concat_meth
 
     if torch.cuda.is_available() and device == 'cuda':
         psnr_func = psnr_gpu
-        # ssim_func = ssim
+        ssim_func = ssim
     else:
         psnr_func = psnr_np
-        # ssim_func = ssim_np
+        ssim_func = ssim_np
 
     # 遍历所有batch和slice
     for i in range(batch_size):
@@ -69,17 +69,17 @@ def calculate_metrics(target, ref, device='cuda', binary_masks=None, concat_meth
 
             # 计算PSNR和SSIM
             cur_psnr = psnr_func(target_region, output_region)
-            # cur_ssim = ssim_func(target_region, output_region)
+            cur_ssim = ssim_func(target_region, output_region)
 
             avg_psnr[area] += cur_psnr
-            # avg_ssim[quadrant - 1] += cur_ssim
+            avg_ssim[area] += cur_ssim
 
     # 计算平均值
     avg_psnr = [x / batch_size for x in avg_psnr]
-    # avg_ssim = [x / batch_size for x in avg_ssim]
+    avg_ssim = [x / batch_size for x in avg_ssim]
 
     # return avg_psnr, avg_ssim
-    return avg_psnr
+    return avg_psnr, avg_ssim
 
 
 def evaluation(config, net, device, criterion, show_image=False, concat_method='plane'):

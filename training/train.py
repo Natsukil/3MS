@@ -67,14 +67,20 @@ def train(config, net, device, criterion, optimizer_f, scheduler_f, metric, resu
         'slice_size': slice_size,
         'batch_size': batch_size,
         'step_slice': step_slice,
+
         'mask_kernel_size': mask_kernel_size,
         'train_binary_mask': train_binary_mask,
         'test_binary_mask': test_binary_mask,
         'train_mask_rate': train_mask_rate,
         'test_mask_rate': test_mask_rate,
+
         'epochs': epochs,
         'device': device,
-        'save_root': save_root
+        'save_root': save_root,
+        'model': config['train']['model'],
+        'optimizer': config['train']['optimizer'],
+        'lr': config['train']['learning_rate'],
+        'scheduler': config['train']['scheduler'],
     }
     logger_fac.log_config(training_settings)
 
@@ -145,7 +151,7 @@ def train(config, net, device, criterion, optimizer_f, scheduler_f, metric, resu
                     # 计算损失
                     # loss_value = criterion.calculate_loss_regions(outputs, original_images_step, binary_masks=train_binary_mask)
                     loss_value = criterion.calculate_loss_regions(outputs, original_images_step,
-                                                                  binary_masks=test_binary_mask)
+                                                                  binary_masks=train_binary_mask)
 
                     # 反向传播
                     loss_value.backward()
@@ -179,7 +185,7 @@ def train(config, net, device, criterion, optimizer_f, scheduler_f, metric, resu
         net.eval()  # 设置模型为评估模式
         valid_loss = 0.0
         avg_psnr = [0.0] * 4
-        # avg_ssim = [0.0] * 4
+        avg_ssim = [0.0] * 4
         count = 0
 
         torch.cuda.empty_cache()
@@ -205,18 +211,18 @@ def train(config, net, device, criterion, optimizer_f, scheduler_f, metric, resu
                         valid_loss += criterion.calculate_loss_regions(outputs, original_images_step,
                                                                        binary_masks=test_binary_mask)
                         # 计算 PSNR 和 SSIM
-                        current_psnr = metric(outputs, original_images_step, binary_masks=test_binary_mask,
-                                              concat_method=concat_method)
+                        current_psnr, current_ssim = metric(outputs, original_images_step, binary_masks=test_binary_mask,
+                                                            concat_method=concat_method)
                         # 累加每个象限的 PSNR 和 SSIM
                         for j in range(4):
                             avg_psnr[j] += current_psnr[j]
-                            # avg_ssim[j] += current_ssim[j]
+                            avg_ssim[j] += current_ssim[j]
                         count += 1
                 pbar_test.update()
 
         valid_loss /= len(valid_loader)
         avg_psnr_total = [x / count for x in avg_psnr]
-        # avg_ssim_total = [x / count for x in avg_ssim]
+        avg_ssim_total = [x / count for x in avg_ssim]
 
         # 打印结果和写入信息
         logger_fac.info(f"Validation/Loss: {valid_loss:.4f}")
@@ -228,11 +234,20 @@ def train(config, net, device, criterion, optimizer_f, scheduler_f, metric, resu
         psnr_message = (f"Validation/PSNR "
                         f"T1c: {avg_psnr_total[0]:.4f}, T1n: {avg_psnr_total[1]:.4f}, "
                         f"T2w: {avg_psnr_total[2]:.4f}, T2f: {avg_psnr_total[3]:.4f}")
+        ssim_message = (f"Validation/SSIM "
+                        f"T1c: {avg_ssim_total[0]:.4f}, T1n: {avg_ssim_total[1]:.4f}, "
+                        f"T2w: {avg_ssim_total[2]:.4f}, T2f: {avg_ssim_total[3]:.4f}")
         logger_fac.info(psnr_message)
-        tb_logger.log_scalar('Validation/PSNR_T1c', avg_psnr_total[0], epoch_processed_step)
-        tb_logger.log_scalar('Validation/PSNR_T1n', avg_psnr_total[1], epoch_processed_step)
-        tb_logger.log_scalar('Validation/PSNR_T2w', avg_psnr_total[2], epoch_processed_step)
-        tb_logger.log_scalar('Validation/PSNR_T2f', avg_psnr_total[3], epoch_processed_step)
+        logger_fac.info(ssim_message)
+        tb_logger.log_scalar('Validation/PSNR_T1c', avg_psnr_total[0], epoch)
+        tb_logger.log_scalar('Validation/PSNR_T1n', avg_psnr_total[1], epoch)
+        tb_logger.log_scalar('Validation/PSNR_T2w', avg_psnr_total[2], epoch)
+        tb_logger.log_scalar('Validation/PSNR_T2f', avg_psnr_total[3], epoch)
+
+        tb_logger.log_scalar('Validation/SSIM_T1c', avg_ssim_total[0], epoch)
+        tb_logger.log_scalar('Validation/SSIM_T1n', avg_ssim_total[1], epoch)
+        tb_logger.log_scalar('Validation/SSIM_T2w', avg_ssim_total[2], epoch)
+        tb_logger.log_scalar('Validation/SSIM_T2f', avg_ssim_total[3], epoch)
 
         # print( f"验证 SSIM T1c {avg_ssim_total[0]:.4f}, T1n {avg_ssim_total[1]:.4f}, T2w {avg_ssim_total[2]:.4f},
         # T2f {avg_ssim_total[3]:.4f}")

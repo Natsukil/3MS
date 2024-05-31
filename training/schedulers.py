@@ -7,7 +7,7 @@ class SchedulerFactory:
         if scheduler_name == 'step_lr':
             self.scheduler = StepLR(optimizer, **kwargs)
         elif scheduler_name == 'exp_lr':
-            self.scheduler = ExponentialLR(optimizer, )
+            self.scheduler = ExponentialLR(optimizer, gamma=0.99)
         elif scheduler_name == 'cosine_wr':
             self.scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=10, T_mult=2, eta_min=0.00001)
         elif scheduler_name == 'cosine_lr':

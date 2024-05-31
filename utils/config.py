@@ -18,6 +18,14 @@ def get_args():
     parser.add_argument('--load_dir', type=str, help='Directory to load the pre-trained model from')
     parser.add_argument('-r', '--resume', type=bool, help='Whether to train from a checkpoint')
     parser.add_argument('--resume_root', type=str, help='File to load the resume model from')
+
     parser.add_argument('--concat', type=str, help='image concat method')
+    parser.add_argument("--mask_kernel_size", type=int, help="mask kernel size")
+    parser.add_argument("--train_binary_mask", type=str, help="train_binary mask")
+    parser.add_argument("--train_mask_rate", type=float, help="train_mask rate")
+    parser.add_argument("--test_binary_mask", type=str, help="test_binary mask")
+    parser.add_argument("--test_mask_rate", type=float, help="test_mask rate")
+    parser.add_argument("--num_works", type=int, help="dataloader num_works")
+
 
     return parser.parse_args()

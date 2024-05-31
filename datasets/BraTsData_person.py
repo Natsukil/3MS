@@ -98,14 +98,15 @@ class Dataset_brats(Dataset):
         self.binary_mask = binary_mask
         self.mask_rate = mask_rate
         self.slice_deep = slice_deep
+        self.list_dir = "data/list/debug"
 
         # 根据模式选择对应的csv文件
         if self.mode == 'train':
-            csv_file = os.path.join('data/list/pre-test-50', 'train.csv')
+            csv_file = os.path.join(self.list_dir, 'train.csv')
         elif self.mode == 'valid':
-            csv_file = os.path.join('data/list/pre-test-50', 'valid.csv')
+            csv_file = os.path.join(self.list_dir, 'valid.csv')
         elif self.mode == 'test':
-            csv_file = os.path.join('data/list/pre-test-50', 'test.csv')
+            csv_file = os.path.join(self.list_dir, 'test.csv')
         else:
             raise ValueError(f"Invalid mode: {self.mode}. Expected one of: 'train', 'valid', 'test'")
 
@@ -127,7 +128,7 @@ class Dataset_brats(Dataset):
         # 生成遮蔽掩码
         if self.concat_method == 'plane':
             masked_image = random_masked_area(combined_image, self.mask_kernel_size, self.slice_size, self.binary_mask,
-                                          self.mask_rate, self.concat_method)
+                                              self.mask_rate, self.concat_method)
         elif self.concat_method == 'channels':
             masked_image = random_masked_channels(combined_image, self.mask_kernel_size, self.slice_size,
                                                   self.binary_mask, self.mask_rate)

@@ -1,0 +1,31 @@
+{
+    "train": [
+        "BraTS-GLI-00284-000",
+        "BraTS-GLI-00054-000",
+        "BraTS-GLI-00682-000",
+        "BraTS-GLI-00611-000",
+        "BraTS-GLI-00561-000",
+        "BraTS-GLI-00360-000",
+        "BraTS-GLI-00254-000",
+        "BraTS-GLI-01414-000",
+        "BraTS-GLI-00211-000",
+        "BraTS-GLI-01507-000",
+        "BraTS-GLI-01162-000",
+        "BraTS-GLI-00068-000",
+        "BraTS-GLI-00062-000",
+        "BraTS-GLI-00231-000",
+        "BraTS-GLI-00554-000",
+        "BraTS-GLI-00584-000",
+        "BraTS-GLI-01332-000"
+    ],
+    "val": [
+        "BraTS-GLI-01530-000",
+        "BraTS-GLI-00058-000"
+    ],
+    "test": [
+        "BraTS-GLI-00560-001",
+        "BraTS-GLI-01767-000",
+        "BraTS-GLI-00001-001",
+        "BraTS-GLI-01754-000"
+    ]
+}
