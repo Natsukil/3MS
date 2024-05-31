@@ -16,8 +16,8 @@ train:
 
   init_method: "xavier"
   optimizer: "Adam"
-  scheduler: 'cosine_lr'
-  learning_rate: 1e-3
+  scheduler: 'exp_lr'
+  learning_rate: 2e-4
   epochs: 100
   device: cuda:0
 

@@ -3,7 +3,7 @@ from evaluations.metrics import *
 from utils import show_mask_origin, Logger
 from tqdm import tqdm
 
-from utils.swap_dimensions import swap_batch_slice_dimensions
+from utils.convert_shape import swap_batch_slice_dimensions, delete_batch_dimensions
 
 
 def extract_region(img, quadrant, size):
@@ -15,19 +15,20 @@ def extract_region(img, quadrant, size):
     :return: 提取的区域
     """
     h, w = size
-    if quadrant == 1:
+    if quadrant == 0:
         return img[:h, :w]  # 左上
-    elif quadrant == 2:
+    elif quadrant == 1:
         return img[:h, -w:]  # 右上
-    elif quadrant == 3:
+    elif quadrant == 2:
         return img[-h:, :w]  # 左下
-    elif quadrant == 4:
+    elif quadrant == 3:
         return img[-h:, -w:]  # 右下
 
 
-def calculate_metrics(target, ref, device='cuda', binary_masks=None):
+def calculate_metrics(target, ref, device='cuda', binary_masks=None, concat_method='plane'):
     """
     计算模型在给定输入和目标之间的性能指标。
+    :param concat_method:
     :param binary_masks:
     :param target: 模型输出
     :param ref: 目标图像
@@ -51,10 +52,16 @@ def calculate_metrics(target, ref, device='cuda', binary_masks=None):
 
     # 遍历所有batch和slice
     for i in range(batch_size):
-        for quadrant in range(1, 5):
-            # 提取对应象限的target和output区域
-            target_region = extract_region(ref[i, 0, :, :], quadrant, region_size)
-            output_region = extract_region(target[i, 0, :, :], quadrant, region_size)
+        for area in range(4):
+            if concat_method == 'plane':
+                # 提取对应象限的target和output区域
+                target_region = extract_region(ref[i, 0, :, :], area, region_size)
+                output_region = extract_region(target[i, 0, :, :], area, region_size)
+            elif concat_method == 'channels':
+                target_region = ref[i, area, :, :]
+                output_region = target[i, area, :, :]
+            else:
+                raise NotImplementedError("Invalid concat_method")
 
             # 调整维度以适应ssim函数要求
             target_region = target_region.unsqueeze(0).unsqueeze(0)  # [1, 1, H, W]
@@ -64,7 +71,7 @@ def calculate_metrics(target, ref, device='cuda', binary_masks=None):
             cur_psnr = psnr_func(target_region, output_region)
             # cur_ssim = ssim_func(target_region, output_region)
 
-            avg_psnr[quadrant - 1] += cur_psnr
+            avg_psnr[area] += cur_psnr
             # avg_ssim[quadrant - 1] += cur_ssim
 
     # 计算平均值
@@ -75,7 +82,7 @@ def calculate_metrics(target, ref, device='cuda', binary_masks=None):
     return avg_psnr
 
 
-def evaluation(config, net, device, criterion, show_image=False):
+def evaluation(config, net, device, criterion, show_image=False, concat_method='plane'):
     # 剪裁后切片的数量
     slice_deep = config['train']['slice_deep']
     # 剪裁后切片的宽高尺寸
@@ -92,13 +99,13 @@ def evaluation(config, net, device, criterion, show_image=False):
     # 测试时候的遮蔽率
     test_mask_rate = config['mask']['test_mask_rate']
 
-    brats_test_root = config['data']['train']
+    brats_test_root = config['data']['test']
 
     test_loader = get_brats_dataloader(root_dir=brats_test_root, batch_size=batch_size, slice_deep=slice_deep,
                                        slice_size=slice_size,
                                        mask_kernel_size=mask_kernel_size, binary_mask=test_binary_mask,
                                        mask_rate=test_mask_rate,
-                                       num_workers=2, mode='eval')
+                                       num_workers=2, mode='test', concat_method=concat_method)
     logger_c = Logger(None, dst='console')
 
     # 每个epoch包含的step数量
@@ -115,8 +122,12 @@ def evaluation(config, net, device, criterion, show_image=False):
     with torch.no_grad():  # 关闭梯度计算
         with tqdm(test_loader, desc="Validation", unit="batch_person") as pbar_test:
             for masked_images, original_images in pbar_test:
-                masked_images = swap_batch_slice_dimensions(masked_images).to(device)
-                original_images = swap_batch_slice_dimensions(original_images).to(device)
+                if concat_method == 'plane':
+                    masked_images = swap_batch_slice_dimensions(masked_images).to(device)
+                    original_images = swap_batch_slice_dimensions(original_images).to(device)
+                elif concat_method == 'channels':
+                    masked_images = delete_batch_dimensions(masked_images).to(device)
+                    original_images = delete_batch_dimensions(original_images).to(device)
                 for step in range(step_per_epoch):
                     masked_images_step = masked_images[range(step, masked_images.shape[0],
                                                              step_per_epoch), :, :, :]
@@ -125,13 +136,16 @@ def evaluation(config, net, device, criterion, show_image=False):
                     outputs = net(masked_images_step)
 
                     # 计算损失
-                    test_loss += criterion.calculate_loss(outputs, original_images_step,
-                                                          binary_masks=test_binary_mask).item()
+                    test_loss += criterion.calculate_loss_regions(outputs, original_images_step,
+                                                                  binary_masks=test_binary_mask)
+                    # test_loss = criterion.calculate_loss_no_background(outputs, original_images_step)
                     # 计算 PSNR 和 SSIM
-                    current_psnr = calculate_metrics(outputs, original_images_step, binary_masks=test_binary_mask)
+                    current_psnr = calculate_metrics(outputs, original_images_step, binary_masks=test_binary_mask,
+                                                     concat_method=concat_method)
                     if show_image and loop > 0:
-                        show_mask_origin(outputs, masked_images_step, original_images_step, index)
-                        loop-=1
+                        show_mask_origin(outputs, masked_images_step, original_images_step, index,
+                                         concat_method=concat_method)
+                        loop -= 1
                     # 累加每个象限的 PSNR 和 SSIM
                     for j in range(4):
                         avg_psnr[j] += current_psnr[j]
@@ -143,10 +157,10 @@ def evaluation(config, net, device, criterion, show_image=False):
     # avg_ssim_total = [x / count for x in avg_ssim]
 
     # 打印结果和写入信息
-    logger_c.info(f"Validation/Loss: {test_loss:.4f}")
+    logger_c.info(f"Test/Loss: {test_loss:.4f}")
 
     # 打印每种模态的详细 PSNR 和 SSIM
-    psnr_message = (f"Validation/PSNR "
+    psnr_message = (f"Test/PSNR "
                     f"T1c: {avg_psnr_total[0]:.4f}, T1n: {avg_psnr_total[1]:.4f}, "
                     f"T2w: {avg_psnr_total[2]:.4f}, T2f: {avg_psnr_total[3]:.4f}")
     logger_c.info(psnr_message)

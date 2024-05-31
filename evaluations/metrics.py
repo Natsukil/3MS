@@ -24,7 +24,7 @@ def psnr_np(target, ref):
     return psnr_value
 
 
-def psnr_gpu(target, output, max_pixel=2.0):
+def psnr_gpu(target, output, max_pixel=1.0):
     mse_loss = torch.nn.MSELoss()
     mse = mse_loss(output, target)  # 确保output和target已经在GPU上
     psnr = 20 * torch.log10(max_pixel / torch.sqrt(mse))

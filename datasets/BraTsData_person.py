@@ -28,6 +28,10 @@ import random
 import SimpleITK as sitk
 from torch.utils.data import Dataset, DataLoader
 from mask_generator import random_masked_area
+import pandas as pd
+import time
+
+from mask_generator.masker import random_masked_channels
 
 
 def read_image(path):
@@ -37,7 +41,7 @@ def read_image(path):
 def normalize(image):
     max_val = np.percentile(image, 99)
     image = np.clip(image, 0, max_val)
-    image = (image / max_val) * 2 - 1
+    image = image / max_val
     return image
 
 
@@ -81,20 +85,33 @@ def random_flip(image, action):
 
 class Dataset_brats(Dataset):
     def __init__(self, root_dir, slice_deep, slice_size=192, mask_kernel_size=12, binary_mask='1111', mask_rate=0.5,
-                 mode='train'):
+                 mode='train', concat_method='plane'):
         """
         初始化函数，列出所有患者的数据目录。
         """
         self.mode = mode
+        self.concat_method = concat_method
         self.root_dir = root_dir
-        self.patients = [os.path.join(root_dir, name) for name in os.listdir(root_dir) if
-                         os.path.isdir(os.path.join(root_dir, name))]
         # 遮蔽算法的超参数初始化
         self.slice_size = slice_size
         self.mask_kernel_size = mask_kernel_size
         self.binary_mask = binary_mask
         self.mask_rate = mask_rate
         self.slice_deep = slice_deep
+
+        # 根据模式选择对应的csv文件
+        if self.mode == 'train':
+            csv_file = os.path.join('data/list/pre-test-50', 'train.csv')
+        elif self.mode == 'valid':
+            csv_file = os.path.join('data/list/pre-test-50', 'valid.csv')
+        elif self.mode == 'test':
+            csv_file = os.path.join('data/list/pre-test-50', 'test.csv')
+        else:
+            raise ValueError(f"Invalid mode: {self.mode}. Expected one of: 'train', 'valid', 'test'")
+
+        # 读取csv文件并将每行的名字保存到self.patients列表中
+        df = pd.read_csv(csv_file, header=None)
+        self.patients = [os.path.join('data/raw', self.root_dir, name) for name in df.iloc[:, 0].tolist()]
 
     def __len__(self):
         return len(self.patients)
@@ -105,17 +122,26 @@ class Dataset_brats(Dataset):
         """
         patient_path = self.patients[idx]
         # 预处理并拼接图像
-        combined_image = self.preprocess_directory(patient_path)
+        combined_image = self.preprocess_directory(patient_path, self.concat_method)
+        start = time.time()
         # 生成遮蔽掩码
-        masked_image = random_masked_area(combined_image, self.mask_kernel_size, self.slice_size, self.binary_mask,
-                                          self.mask_rate)
+        if self.concat_method == 'plane':
+            masked_image = random_masked_area(combined_image, self.mask_kernel_size, self.slice_size, self.binary_mask,
+                                          self.mask_rate, self.concat_method)
+        elif self.concat_method == 'channels':
+            masked_image = random_masked_channels(combined_image, self.mask_kernel_size, self.slice_size,
+                                                  self.binary_mask, self.mask_rate)
+        end = time.time()
+        # print(f"mask time: {end - start:.4f}")
         # 生成遮蔽后图像
-        masked_result = np.where(masked_image == 1, combined_image, -1)
+        # masked_result = np.where(masked_image == 1, combined_image, -1)
+        masked_result = combined_image * masked_image
+
         # 返回遮蔽后图像X和原始图像y
         # Convert numpy array to torch tensor
         return torch.tensor(masked_result, dtype=torch.float32), torch.tensor(combined_image, dtype=torch.float32)
 
-    def preprocess_directory(self, directory):
+    def preprocess_directory(self, directory, method='plane'):
         """
         处理指定目录下的所有图像，返回预处理和拼接后的图像。
         """
@@ -139,21 +165,27 @@ class Dataset_brats(Dataset):
         t2w = random_flip(t2w, flip_action)
         t2f = random_flip(t2f, flip_action)
 
+        combined_image = []
         # 合并图像
-        top_row = np.concatenate((t1c, t1n), axis=2)  # 横向拼接
-        bottom_row = np.concatenate((t2w, t2f), axis=2)
-        combined_image = np.concatenate((top_row, bottom_row), axis=1)  # 纵向拼接
+        if method == 'plane':
+            top_row = np.concatenate((t1c, t1n), axis=2)  # 横向拼接
+            bottom_row = np.concatenate((t2w, t2f), axis=2)
+            combined_image = np.concatenate((top_row, bottom_row), axis=1)  # 纵向拼接
+        elif method == 'channels':
+            combined_image = np.stack((t1c, t1n, t2w, t2f), axis=1)
+
         return combined_image
 
 
 def get_brats_dataloader(root_dir, batch_size=1, slice_deep=16,
                          slice_size=192, num_workers=1, mask_kernel_size=12,
-                         binary_mask='1111', mask_rate=0.5, mode='train'):
+                         binary_mask='1111', mask_rate=0.5, mode='train', concat_method='plane'):
     is_shuffle = False
     if mode == 'train':
         is_shuffle = True
     dataset = Dataset_brats(root_dir=root_dir, slice_deep=slice_deep, slice_size=slice_size,
-                            binary_mask=binary_mask, mask_kernel_size=mask_kernel_size, mask_rate=mask_rate, mode=mode)
+                            binary_mask=binary_mask, mask_kernel_size=mask_kernel_size, mask_rate=mask_rate,
+                            mode=mode, concat_method=concat_method)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=is_shuffle,
                             num_workers=num_workers, pin_memory=True)
     return dataloader

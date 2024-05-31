@@ -2,24 +2,20 @@ import time
 
 from datasets import get_brats_dataloader
 from tqdm import tqdm
-from swap_dimensions import swap_batch_slice_dimensions
+from convert_shape import swap_batch_slice_dimensions
 from visualization import show_mask_origin
 
 if __name__ == '__main__':
-    root_dir = "E:\Work\dataset\ASNR-MICCAI-BraTS2023-GLI-Challenge-TrainingData"
-    root_dir_2060 = "D:\Project\dataset\ASNR-MICCAI-BraTS2023-GLI-Challenge-TrainingData"
-    slice_deep = 128
+    root_dir = "ASNR-MICCAI-BraTS2023-GLI-Challenge-TrainingData"
+    slice_deep = 96
     batch_size = 1
     batch_slice = 16
 
     index = 0
-    dataloader = get_brats_dataloader(root_dir=root_dir, batch_size=batch_size, slice_deep=128, slice_size=192,
-                                      mask_kernel_size=3, binary_mask='1000', mask_rate=0.75,
-                                      num_workers=4, mode='test')
+    dataloader = get_brats_dataloader(root_dir=root_dir, batch_size=batch_size, slice_deep=slice_deep, slice_size=192,
+                                      binary_mask='1111', mask_kernel_size=12,mask_rate=0.75,
+                                      mode='train', concat_method='channels')
     loop = 2
-    total = 1251 * batch_size
-    total_slice = 1251 * 128
-    print("Total: ", total)
     current = 0
 
     start = time.time()

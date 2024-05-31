@@ -1,5 +1,8 @@
 import sys
 import torch
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from networks import get_network
 from training import ModelInitializer
 from training import LossFunctions
@@ -20,13 +23,13 @@ def main(args):
     pretrain = args.pretrain if args.pretrain is not None else config['train']['pretrain']
     load_dir = args.load_dir if args.load_dir else config['train']['ckpt']
 
+    concat = args.concat if args.concat else config['data']['concat']
+
     # get network
-    net = get_network(model_name).to(device)
-
-
+    net = get_network(model_name, concat).to(device)
 
     # loss function
-    criterion = LossFunctions()
+    criterion = LossFunctions(concat)
 
     # optimizer
     optimizer_f = OptimizerFactory(config['train']['optimizer'], net, lr=float(config['train']['learning_rate']))
@@ -41,7 +44,7 @@ def main(args):
     # 是否从继续训练
     if args.resume:
         try:
-            last_epoch, best_loss, lr = load_checkpoint(args.resume_root, net, optimizer_f, scheduler_f)
+            last_epoch, best_loss, lr = load_checkpoint(args.resume_root, net, optimizer_f, scheduler_f, method='resume')
             config['train']['last_epoch'] = last_epoch
             config['train']['best_loss'] = best_loss
             config['train']['last_learning_rate'] = lr
@@ -59,7 +62,7 @@ def main(args):
             sys.exit(-1)
     # 初始化模型
     else:
-        initializer = ModelInitializer(method=config['train']['init_method'], uniform=False)
+        initializer = ModelInitializer(method=config['train']['init_method'], uniform=True)
         initializer.initialize(net)
 
     try:
@@ -69,6 +72,7 @@ def main(args):
               criterion=criterion,
               optimizer_f=optimizer_f, scheduler_f=scheduler_f,
               metric=metric, resume=args.resume,
+              concat_method=concat
               )
     except KeyboardInterrupt:
         sys.exit(0)

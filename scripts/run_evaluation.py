@@ -6,7 +6,7 @@ from evaluations import calculate_metrics
 from evaluations.eval import evaluation
 from networks import get_network
 from training import LossFunctions
-from utils import load_config, get_args
+from utils import load_config, get_args, load_checkpoint
 
 
 def main(args):
@@ -18,22 +18,27 @@ def main(args):
     model_name = args.model if args.model else config['test']['model']
     ckpt = Path(args.load_dir if args.load_dir else config['test']['ckpt'])
 
-    net = get_network(model_name).to(device)
+    concat = args.concat if args.concat else config['data']['concat']
+
+    net = get_network(model_name, 'channels').to(device)
     # get network weights from file
     if ckpt.exists() and ckpt.is_file():
-        net.load_state_dict(torch.load(ckpt))
+        print(f"load from checkpoint file: {ckpt}")
+        load_checkpoint(ckpt, net, None, None, method='model',map_location=device)
+        # net.load_state_dict(torch.load(ckpt))
     else:
         raise FileNotFoundError(f"Checkpoint file not found at: {ckpt}")
 
     # loss function
-    criterion = LossFunctions()
+    criterion = LossFunctions(concat)
 
     try:
         evaluation(config=config,
                    net=net,
                    device=device,
                    criterion=criterion,
-                   show_image=True)
+                   show_image=True,
+                   concat_method=concat)
     except KeyboardInterrupt:
         sys.exit(0)
 

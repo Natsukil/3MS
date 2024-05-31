@@ -13,13 +13,18 @@ def create_checkpoint(epoch, model, optimizer_f, scheduler_f, loss, filename):
     torch.save(checkpoint, filename)
 
 
-def load_checkpoint(filename, model, optimizer_f, scheduler_f):
-    checkpoint = torch.load(filename)
-    model.load_state_dict(checkpoint['model_state_dict'])
-    optimizer_f.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    scheduler_f.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
-    epoch = checkpoint['epoch']
-    loss = checkpoint['loss']
-    learning_rate = checkpoint['learning_rate']
-
-    return epoch, loss, learning_rate
+def load_checkpoint(filename, model, optimizer_f, scheduler_f, method='model', map_location='cpu'):
+    if method == 'resume':
+        checkpoint = torch.load(filename)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer_f.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        scheduler_f.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+        epoch = checkpoint['epoch']
+        loss = checkpoint['loss']
+        learning_rate = checkpoint['learning_rate']
+        return epoch, loss, learning_rate
+    elif method == 'model':
+        checkpoint = torch.load(filename, map_location=map_location)
+        model.load_state_dict(checkpoint['model_state_dict'])
+    else:
+        raise ValueError('method must be resume or model')

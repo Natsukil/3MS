@@ -18,5 +18,6 @@ def get_args():
     parser.add_argument('--load_dir', type=str, help='Directory to load the pre-trained model from')
     parser.add_argument('-r', '--resume', type=bool, help='Whether to train from a checkpoint')
     parser.add_argument('--resume_root', type=str, help='File to load the resume model from')
+    parser.add_argument('--concat', type=str, help='image concat method')
 
     return parser.parse_args()

@@ -1,40 +1,123 @@
 from datasets import get_brats_dataloader
 # from evaluations import extract_region
-from utils.swap_dimensions import swap_batch_slice_dimensions
+from utils.convert_shape import swap_batch_slice_dimensions
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import torch
 
 
-def show_mask_origin(y_hat, X, y, index):
+def show_mask_origin(y_hat, X, y, index, concat_method='plane'):
+    vmin = 0
+    vmax = 1
     y_hat = y_hat.to('cpu')
     X = X.to('cpu')
     y = y.to('cpu')
     for i in index:
-        # 设置图像显示的大小
-        plt.figure(figsize=(15, 5))
+        if concat_method == 'plane':
+            # 设置图像显示的大小
+            plt.figure(figsize=(15, 5))
 
-        # 显示 masked_image
-        plt.subplot(1, 3, 1)  # 1行3列的第1个位置
-        plt.imshow(y_hat[i, 0, :, :], cmap='gray', vmin=-1, vmax=1)
-        plt.colorbar()  # 添加颜色条
-        plt.title(f'Y_hat index {i}')  # 添加标题
-        plt.axis('off')  # 关闭坐标轴显示
+            # 显示 masked_image
+            plt.subplot(1, 3, 1)  # 1行3列的第1个位置
+            plt.imshow(y_hat[i, 0, :, :], cmap='gray', vmin=vmin, vmax=1)
+            plt.colorbar()  # 添加颜色条
+            plt.title(f'Y_hat index {i}')  # 添加标题
+            plt.axis('off')  # 关闭坐标轴显示
 
-        # 显示 masked_image
-        plt.subplot(1, 3, 2)  # 1行3列的第1个位置
-        plt.imshow(X[i, 0, :, :], cmap='gray', vmin=-1, vmax=1)
-        plt.colorbar()  # 添加颜色条
-        plt.title(f'mask index {i}')  # 添加标题
-        plt.axis('off')  # 关闭坐标轴显示
+            # 显示 masked_image
+            plt.subplot(1, 3, 2)  # 1行3列的第1个位置
+            plt.imshow(X[i, 0, :, :], cmap='gray', vmin=vmin, vmax=1)
+            plt.colorbar()  # 添加颜色条
+            plt.title(f'mask index {i}')  # 添加标题
+            plt.axis('off')  # 关闭坐标轴显示
 
-        # 显示 masked_result
-        plt.subplot(1, 3, 3)  # 1行3列的第2个位置
-        plt.imshow(y[i, 0, :, :], cmap='gray', vmin=-1, vmax=1)
-        plt.colorbar()  # 添加颜色条
-        plt.title(f'Y index {i}')
-        plt.axis('off')  # 关闭坐标轴显示
+            # 显示 masked_result
+            plt.subplot(1, 3, 3)  # 1行3列的第2个位置
+            plt.imshow(y[i, 0, :, :], cmap='gray', vmin=vmin, vmax=1)
+            plt.colorbar()  # 添加颜色条
+            plt.title(f'Y index {i}')
+            plt.axis('off')  # 关闭坐标轴显示
+        elif concat_method == 'channels':
+            # 获取切片数量和图像大小
+            # slice_num, channels, w, h = y_hat.shape[1], y_hat.shape[2], y_hat.shape[3], y_hat.shape[4]
 
+            # 设置图像显示的大小
+            plt.figure(figsize=(10, 10))
+
+            # 显示 y_hat
+            plt.subplot(3, 4, 1)  # 3行3列的第1个位置
+            plt.imshow(y_hat[i, 0, :, :], cmap='gray', vmin=vmin, vmax=1)
+            # plt.colorbar()  # 添加颜色条
+            plt.title(f'Y_hat t1c index {i}')  # 添加标题
+            plt.axis('off')  # 关闭坐标轴显示
+
+            plt.subplot(3, 4, 2)  # 3行3列的第2个位置
+            plt.imshow(y_hat[i, 1, :, :], cmap='gray', vmin=vmin, vmax=1)
+            # plt.colorbar()  # 添加颜色条
+            plt.title(f'Y_hat t1n index {i}')  # 添加标题
+            plt.axis('off')  # 关闭坐标轴显示
+
+            plt.subplot(3, 4, 3)  # 3行3列的第3个位置
+            plt.imshow(y_hat[i, 2, :, :], cmap='gray', vmin=vmin, vmax=1)
+            # plt.colorbar()  # 添加颜色条
+            plt.title(f'Y_hat t2w index {i}')  # 添加标题
+            plt.axis('off')  # 关闭坐标轴显示
+
+            plt.subplot(3, 4, 4)  # 3行3列的第4个位置
+            plt.imshow(y_hat[i, 3, :, :], cmap='gray', vmin=vmin, vmax=1)
+            # plt.colorbar()  # 添加颜色条
+            plt.title(f'Y_hat t2f index {i}')  # 添加标题
+            plt.axis('off')  # 关闭坐标轴显示
+
+            # 显示 X
+            plt.subplot(3, 4, 5)  # 3行3列的第5个位置
+            plt.imshow(X[i, 0, :, :], cmap='gray', vmin=vmin, vmax=1)
+            # plt.colorbar()  # 添加颜色条
+            plt.title(f'X t1c index {i}')  # 添加标题
+            plt.axis('off')  # 关闭坐标轴显示
+
+            plt.subplot(3, 4, 6)  # 3行3列的第6个位置
+            plt.imshow(X[i, 1, :, :], cmap='gray', vmin=vmin, vmax=1)
+            # plt.colorbar()  # 添加颜色条
+            plt.title(f'X t1n index {i}')  # 添加标题
+            plt.axis('off')  # 关闭坐标轴显示
+
+            plt.subplot(3, 4, 7)  # 3行3列的第7个位置
+            plt.imshow(X[i, 2, :, :], cmap='gray', vmin=vmin, vmax=1)
+            # plt.colorbar()  # 添加颜色条
+            plt.title(f'X t2w index {i}')  # 添加标题
+            plt.axis('off')  # 关闭坐标轴显示
+
+            plt.subplot(3, 4, 8)  # 3行3列的第8个位置
+            plt.imshow(X[i, 3, :, :], cmap='gray', vmin=vmin, vmax=1)
+            # plt.colorbar()  # 添加颜色条
+            plt.title(f'X t2f index {i}')  # 添加标题
+            plt.axis('off')  # 关闭坐标轴显示
+
+            # 显示 y
+            plt.subplot(3, 4, 9)  # 3行3列的第9个位置
+            plt.imshow(y[i, 0, :, :], cmap='gray', vmin=vmin, vmax=1)
+            # plt.colorbar()  # 添加颜色条
+            plt.title(f'Y t1c index {i}')
+            plt.axis('off')  # 关闭坐标轴显示
+
+            plt.subplot(3, 4, 10)  # 3行3列的第10个位置
+            plt.imshow(y[i, 1, :, :], cmap='gray', vmin=vmin, vmax=1)
+            # plt.colorbar()  # 添加颜色条
+            plt.title(f'Y t1n index {i}')
+            plt.axis('off')  # 关闭坐标轴显示
+
+            plt.subplot(3, 4, 11)  # 3行3列的第11个位置
+            plt.imshow(y[i, 2, :, :], cmap='gray', vmin=vmin, vmax=1)
+            # plt.colorbar()  # 添加颜色条
+            plt.title(f'Y t2w index {i}')
+            plt.axis('off')  # 关闭坐标轴显示
+
+            plt.subplot(3, 4, 12)  # 3行3列的第12个位置
+            plt.imshow(y[i, 3, :, :], cmap='gray', vmin=vmin, vmax=1)
+            # plt.colorbar()  # 添加颜色条
+            plt.title(f'Y t2f index {i}')
+            plt.axis('off')  # 关闭坐标轴显示
         plt.show()
 
 
@@ -74,7 +157,6 @@ def test_slice_result(X, y, index):
 
     w, h = y.shape[2] // 2, y.shape[3] // 2
 
-
     # 从y_hat和y中提取四个区域
     regions = {
         't1c': (slice(None), slice(None), slice(0, w), slice(0, h)),  # 左上
@@ -94,6 +176,3 @@ def test_slice_result(X, y, index):
 
     plt.suptitle(f'Visualizing Different Regions of a Single Batch: Slice{index}')
     plt.show()
-
-
-

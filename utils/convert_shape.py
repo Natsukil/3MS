@@ -9,3 +9,13 @@ def swap_batch_slice_dimensions(tensor):
     # Using permute to swap the dimensions
     swapped_tensor = tensor.permute(1, 0, 2, 3)
     return swapped_tensor
+
+
+def delete_batch_dimensions(tensor):
+    if tensor.shape[0] != 1:
+        raise ValueError("batch_size should be 1")
+
+        # 去除 batch_size 维度
+    tensor = tensor.squeeze(0)
+    return tensor
+

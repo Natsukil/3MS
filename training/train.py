@@ -8,10 +8,11 @@ from tqdm import tqdm
 from utils import Logger, TensorboardLogger, create_checkpoint
 
 from datasets import get_brats_dataloader
-from utils.swap_dimensions import swap_batch_slice_dimensions
+from utils.convert_shape import swap_batch_slice_dimensions, delete_batch_dimensions
+from mask_generator import random_masked_area
 
 
-def train(config, net, device, criterion, optimizer_f, scheduler_f, metric, resume):
+def train(config, net, device, criterion, optimizer_f, scheduler_f, metric, resume, concat_method='plane'):
     # 剪裁后切片的数量
     slice_deep = config['train']['slice_deep']
     # 剪裁后切片的宽高尺寸
@@ -35,6 +36,21 @@ def train(config, net, device, criterion, optimizer_f, scheduler_f, metric, resu
     # 训练轮数
     epochs = config['train']['epochs']
 
+
+    # 训练数据集与验证数据集
+    brats_train_root = config['data']['train']
+    brats_valid_root = config['data']['valid']
+    train_loader = get_brats_dataloader(root_dir=brats_train_root, batch_size=batch_size, slice_deep=slice_deep,
+                                        slice_size=slice_size,
+                                        mask_kernel_size=mask_kernel_size, binary_mask=train_binary_mask,
+                                        mask_rate=train_mask_rate,
+                                        num_workers=6, mode='train', concat_method=concat_method)
+    valid_loader = get_brats_dataloader(root_dir=brats_valid_root, batch_size=batch_size, slice_deep=slice_deep,
+                                        slice_size=slice_size,
+                                        mask_kernel_size=mask_kernel_size, binary_mask=test_binary_mask,
+                                        mask_rate=test_mask_rate,
+                                        num_workers=4, mode='valid', concat_method=concat_method)
+
     # 定义模型保存路径
     save_root = "result/models/" + config['train']['model']
     current_time = datetime.datetime.now().strftime("-%m-%d-%H-%M-%S")
@@ -46,6 +62,7 @@ def train(config, net, device, criterion, optimizer_f, scheduler_f, metric, resu
     logger_fac = Logger(save_root, dst='both')
     logger_f = Logger(save_root, dst='file')
     training_settings = {
+        'concat': concat_method,
         'slice_deep': slice_deep,
         'slice_size': slice_size,
         'batch_size': batch_size,
@@ -63,20 +80,6 @@ def train(config, net, device, criterion, optimizer_f, scheduler_f, metric, resu
 
     # 创建 TensorBoard 记录器
     tb_logger = TensorboardLogger(save_root)
-
-    # 训练数据集与测试数据集
-    brats_train_root = config['data']['train']
-    brats_test_root = config['data']['test']
-    train_loader = get_brats_dataloader(root_dir=brats_train_root, batch_size=batch_size, slice_deep=slice_deep,
-                                        slice_size=slice_size,
-                                        mask_kernel_size=mask_kernel_size, binary_mask=train_binary_mask,
-                                        mask_rate=train_mask_rate,
-                                        num_workers=2, mode='train')
-    test_loader = get_brats_dataloader(root_dir=brats_test_root, batch_size=batch_size, slice_deep=slice_deep,
-                                       slice_size=slice_size,
-                                       mask_kernel_size=mask_kernel_size, binary_mask=test_binary_mask,
-                                       mask_rate=test_mask_rate,
-                                       num_workers=2, mode='eval')
 
     # 训练网络
     logger_fac.info("Training Start")
@@ -117,8 +120,12 @@ def train(config, net, device, criterion, optimizer_f, scheduler_f, metric, resu
                 # 交换维度Batch_size和slice_size
                 # 将slice_size作为真实的Batch_size
                 # Batch_size设置为1，交换后代表单通道图像)
-                masked_images = swap_batch_slice_dimensions(masked_images).to(device)
-                original_images = swap_batch_slice_dimensions(original_images).to(device)
+                if concat_method == 'plane':
+                    masked_images = swap_batch_slice_dimensions(masked_images).to(device)
+                    original_images = swap_batch_slice_dimensions(original_images).to(device)
+                elif concat_method == 'channels':
+                    masked_images = delete_batch_dimensions(masked_images).to(device)
+                    original_images = delete_batch_dimensions(original_images).to(device)
                 # 每个epoch下的step
                 # step的数量=一个人总切片数量 // 每次step训练的切片数量
 
@@ -136,7 +143,9 @@ def train(config, net, device, criterion, optimizer_f, scheduler_f, metric, resu
                     outputs = net(masked_images_step)
 
                     # 计算损失
-                    loss_value = criterion.calculate_loss(outputs, original_images_step, binary_masks=train_binary_mask)
+                    # loss_value = criterion.calculate_loss_regions(outputs, original_images_step, binary_masks=train_binary_mask)
+                    loss_value = criterion.calculate_loss_regions(outputs, original_images_step,
+                                                                  binary_masks=test_binary_mask)
 
                     # 反向传播
                     loss_value.backward()
@@ -168,29 +177,36 @@ def train(config, net, device, criterion, optimizer_f, scheduler_f, metric, resu
 
         # 验证模型性能
         net.eval()  # 设置模型为评估模式
-        test_loss = 0.0
+        valid_loss = 0.0
         avg_psnr = [0.0] * 4
         # avg_ssim = [0.0] * 4
         count = 0
 
         torch.cuda.empty_cache()
         with torch.no_grad():  # 关闭梯度计算
-            with tqdm(test_loader, desc="Validation", unit="batch_person") as pbar_test:
+            with tqdm(valid_loader, desc="Validation", unit="batch_person") as pbar_test:
                 for masked_images, original_images in pbar_test:
-                    masked_images = swap_batch_slice_dimensions(masked_images).to(device)
-                    original_images = swap_batch_slice_dimensions(original_images).to(device)
+                    if concat_method == 'plane':
+                        masked_images = swap_batch_slice_dimensions(masked_images).to(device)
+                        original_images = swap_batch_slice_dimensions(original_images).to(device)
+                    elif concat_method == 'channels':
+                        masked_images = delete_batch_dimensions(masked_images).to(device)
+                        original_images = delete_batch_dimensions(original_images).to(device)
                     for step in range(slice_deep // step_slice):
                         masked_images_step = masked_images[range(step, masked_images.shape[0],
-                                                           step_per_epoch), :, :, :]
+                                                                 step_per_epoch), :, :, :]
                         original_images_step = original_images[range(step, original_images.shape[0],
-                                                               step_per_epoch), :, :, :]
+                                                                     step_per_epoch), :, :, :]
                         outputs = net(masked_images_step)
 
                         # 计算损失
-                        test_loss += criterion.calculate_loss(outputs, original_images_step,
-                                                              binary_masks=test_binary_mask).item()
+                        # test_loss += criterion.calculate_loss_regions(outputs, original_images_step,
+                        #                                               binary_masks=test_binary_mask)
+                        valid_loss += criterion.calculate_loss_regions(outputs, original_images_step,
+                                                                       binary_masks=test_binary_mask)
                         # 计算 PSNR 和 SSIM
-                        current_psnr = metric(outputs, original_images_step, binary_masks=test_binary_mask)
+                        current_psnr = metric(outputs, original_images_step, binary_masks=test_binary_mask,
+                                              concat_method=concat_method)
                         # 累加每个象限的 PSNR 和 SSIM
                         for j in range(4):
                             avg_psnr[j] += current_psnr[j]
@@ -198,13 +214,13 @@ def train(config, net, device, criterion, optimizer_f, scheduler_f, metric, resu
                         count += 1
                 pbar_test.update()
 
-        test_loss /= len(test_loader)
+        valid_loss /= len(valid_loader)
         avg_psnr_total = [x / count for x in avg_psnr]
         # avg_ssim_total = [x / count for x in avg_ssim]
 
         # 打印结果和写入信息
-        logger_fac.info(f"Validation/Loss: {test_loss:.4f}")
-        tb_logger.log_scalar('Validation/Loss', test_loss, epoch)
+        logger_fac.info(f"Validation/Loss: {valid_loss:.4f}")
+        tb_logger.log_scalar('Validation/Loss', valid_loss, epoch)
         # print("平均 PSNR: ", " ".join([f"{x:.4f}" for x in avg_psnr_total]))
         # print("平均 SSIM: ", " ".join([f"{x:.4f}" for x in avg_ssim_total]))
 
@@ -222,17 +238,17 @@ def train(config, net, device, criterion, optimizer_f, scheduler_f, metric, resu
         # T2f {avg_ssim_total[3]:.4f}")
 
         # 保存最佳模型
-        if test_loss < best_loss:
-            best_loss = test_loss
+        if valid_loss < best_loss:
+            best_loss = valid_loss
             file_name = f'best_model_epoch_{epoch + 1}.ckpt'
             best_model_path = save_root / file_name
-            create_checkpoint(epoch + 1, net, optimizer_f, scheduler_f, test_loss, best_model_path)
+            create_checkpoint(epoch + 1, net, optimizer_f, scheduler_f, valid_loss, best_model_path)
             logger_fac.info(f"Saved best model at epoch {epoch + 1} to {best_model_path}")
 
         # 保存定期的检查点
         if (epoch + 1) % 10 == 0:
             checkpoint_path = save_root / f'checkpoint_epoch_{epoch + 1}.ckpt'
-            create_checkpoint(epoch + 1, net, optimizer_f, scheduler_f, test_loss, checkpoint_path)
+            create_checkpoint(epoch + 1, net, optimizer_f, scheduler_f, valid_loss, checkpoint_path)
             logger_fac.info(f"Saved checkpoint at epoch {epoch + 1}")
         logger_fac.info("---------------------------------------------------------------------------------------------")
         torch.cuda.empty_cache()
