@@ -35,7 +35,7 @@ test:
   slice_size: 192
   model: "UNet"
   device: cuda:0
-  ckpt: "result/models/UNet/1111-05-31-17-33-11/best_model_epoch_28.ckpt"
+  ckpt: "result/models/UNet/channels_75_1111_16_96/best_model_epoch_10.ckpt"
   result_dir: "result/models/"
 
 mask:

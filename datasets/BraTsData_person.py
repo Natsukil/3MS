@@ -98,7 +98,7 @@ class Dataset_brats(Dataset):
         self.binary_mask = binary_mask
         self.mask_rate = mask_rate
         self.slice_deep = slice_deep
-        self.list_dir = "data/list/debug"
+        self.list_dir = "data/list/pre-test-50"
 
         # 根据模式选择对应的csv文件
         if self.mode == 'train':

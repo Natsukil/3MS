@@ -115,7 +115,7 @@ def evaluation(config, net, device, criterion, show_image=False, concat_method='
     net.eval()  # 设置模型为评估模式
     test_loss = 0.0
     avg_psnr = [0.0] * 4
-    # avg_ssim = [0.0] * 4
+    avg_ssim = [0.0] * 4
     count = 0
     loop = 3
     torch.cuda.empty_cache()
@@ -140,7 +140,7 @@ def evaluation(config, net, device, criterion, show_image=False, concat_method='
                                                                   binary_masks=test_binary_mask)
                     # test_loss = criterion.calculate_loss_no_background(outputs, original_images_step)
                     # 计算 PSNR 和 SSIM
-                    current_psnr = calculate_metrics(outputs, original_images_step, binary_masks=test_binary_mask,
+                    current_psnr, current_ssim = calculate_metrics(outputs, original_images_step, binary_masks=test_binary_mask,
                                                      concat_method=concat_method)
                     if show_image and loop > 0:
                         show_mask_origin(outputs, masked_images_step, original_images_step, index,
@@ -149,12 +149,13 @@ def evaluation(config, net, device, criterion, show_image=False, concat_method='
                     # 累加每个象限的 PSNR 和 SSIM
                     for j in range(4):
                         avg_psnr[j] += current_psnr[j]
+                        avg_ssim[j] += current_ssim[j]
                     count += 1
             pbar_test.update()
 
     test_loss /= len(test_loader)
     avg_psnr_total = [x / count for x in avg_psnr]
-    # avg_ssim_total = [x / count for x in avg_ssim]
+    avg_ssim_total = [x / count for x in avg_ssim]
 
     # 打印结果和写入信息
     logger_c.info(f"Test/Loss: {test_loss:.4f}")
@@ -163,7 +164,11 @@ def evaluation(config, net, device, criterion, show_image=False, concat_method='
     psnr_message = (f"Test/PSNR "
                     f"T1c: {avg_psnr_total[0]:.4f}, T1n: {avg_psnr_total[1]:.4f}, "
                     f"T2w: {avg_psnr_total[2]:.4f}, T2f: {avg_psnr_total[3]:.4f}")
+    ssim_message = (f"Test/SSIM "
+                    f"T1c: {avg_ssim_total[0]:.4f}, T1n: {avg_ssim_total[1]:.4f}, "
+                    f"T2w: {avg_ssim_total[2]:.4f}, T2f: {avg_ssim_total[3]:.4f}")
     logger_c.info(psnr_message)
+    logger_c.info(ssim_message)
 
 
 

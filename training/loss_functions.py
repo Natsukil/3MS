@@ -70,8 +70,8 @@ class LossFunctions:
             # 你可以根据需要调整损失的权重或合并策略
             # combined_loss = mse + (1 - ssim)
             # total_loss += combined_loss
-            # total_loss += weights[idx] * non_background_loss
-            total_loss += weights[idx] * mse.mean()
+            total_loss += weights[idx] * non_background_loss
+            # total_loss += weights[idx] * mse.mean()/
 
         return total_loss
 

@@ -5,8 +5,8 @@ class OptimizerFactory:
     def __init__(self,  optimizer_name, net, lr):
         self.optimizer = None
         if optimizer_name == 'Adam':
-            # self.optimizer = torch.optim.Adam(net.parameters(), lr=lr, weight_decay=0.01)
-            self.optimizer = torch.optim.Adam(net.parameters(), lr=lr)
+            self.optimizer = torch.optim.Adam(net.parameters(), lr=lr, weight_decay=5e-1)
+            # self.optimizer = torch.optim.Adam(net.parameters(), lr=lr)
         elif optimizer_name == 'SGD':
             self.optimizer = torch.optim.SGD(net.parameters(), lr=lr)
         elif optimizer_name == 'Adagrad':

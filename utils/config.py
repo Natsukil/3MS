@@ -10,7 +10,7 @@ def load_config(config_path):
 
 def get_args():
     parser = argparse.ArgumentParser(description='Train/Test a deep learning model with specified configuration.')
-    parser.add_argument('-c', '--config', type=str, default='config/UNet_2d.yaml',
+    parser.add_argument('-c', '--config', type=str,
                         help='Path to the YAML configuration file')
     parser.add_argument('-d', '--device', type=str, help='Device to run the model on, e.g., "cuda:0" or "cpu"')
     parser.add_argument('-m', '--model', type=str, help='Model to use for training')
