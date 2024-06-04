@@ -80,7 +80,7 @@ def random_masked_channels(image_batch, mask_kernel_size, slice_size, binary_mas
         """
     if is_random:
         mask_rate = random.uniform(0.0, 1.0)
-        pro_size = [1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96]
+        pro_size = [3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96]
         mask_kernel_size = pro_size[random.randint(0, 12)]
         # print(mask_rate, mask_kernel_size)
 
