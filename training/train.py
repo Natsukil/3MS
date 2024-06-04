@@ -33,6 +33,8 @@ def train(config, net, device, criterion, optimizer_f, scheduler_f, metric, resu
     # 测试时候的遮蔽率
     test_mask_rate = config['mask']['test_mask_rate']
 
+    mask_is_random = config['mask']['is_random']
+
     # 训练轮数
     epochs = config['train']['epochs']
 
@@ -43,7 +45,7 @@ def train(config, net, device, criterion, optimizer_f, scheduler_f, metric, resu
     train_loader = get_brats_dataloader(root_dir=brats_train_root, batch_size=batch_size, slice_deep=slice_deep,
                                         slice_size=slice_size,
                                         mask_kernel_size=mask_kernel_size, binary_mask=train_binary_mask,
-                                        mask_rate=train_mask_rate,
+                                        mask_rate=train_mask_rate, is_random=mask_is_random,
                                         num_workers=6, mode='train', concat_method=concat_method)
     valid_loader = get_brats_dataloader(root_dir=brats_valid_root, batch_size=batch_size, slice_deep=slice_deep,
                                         slice_size=slice_size,

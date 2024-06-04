@@ -15,6 +15,7 @@ def random_masked_area(image_batch, mask_kernel_size, slice_size, binary_mask, m
     :param mask_rate: float, 遮蔽的比例
     :return: ndarray, 遮蔽后的图像批次
     """
+
     slice_num = image_batch.shape[0]
     # 初始化原图的遮蔽掩码
 
@@ -66,7 +67,7 @@ def random_masked_area(image_batch, mask_kernel_size, slice_size, binary_mask, m
 
     return masked_image
 
-def random_masked_channels(image_batch, mask_kernel_size, slice_size, binary_mask, mask_rate):
+def random_masked_channels(image_batch, mask_kernel_size, slice_size, binary_mask, mask_rate, is_random=False):
     """
         为图像批次创建遮蔽区域。
         :param method:
@@ -77,6 +78,12 @@ def random_masked_channels(image_batch, mask_kernel_size, slice_size, binary_mas
         :param mask_rate: float, 遮蔽的比例
         :return: ndarray, 遮蔽后的图像批次
         """
+    if is_random:
+        mask_rate = random.uniform(0.0, 1.0)
+        pro_size = [1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96]
+        mask_kernel_size = pro_size[random.randint(0, 12)]
+        # print(mask_rate, mask_kernel_size)
+
     slice_num = image_batch.shape[0]
     # 初始化原图的遮蔽掩码
 
@@ -84,6 +91,7 @@ def random_masked_channels(image_batch, mask_kernel_size, slice_size, binary_mas
 
     # 构建遮蔽块计数图的维度
     masked_sub_image_size = slice_size // mask_kernel_size
+
 
 
 
@@ -111,7 +119,8 @@ def random_masked_channels(image_batch, mask_kernel_size, slice_size, binary_mas
             channel_mask = torch.zeros((slice_size, slice_size), dtype=torch.float32)
             for block in keep_blocks:
                 block_h, block_w = block
-                masked_sub_image_count[block_h, block_w] = 1
+                if mask_rate >= 0.75:
+                    masked_sub_image_count[block_h, block_w] = 1
 
                 h_start = block_h * mask_kernel_size
                 h_end = h_start + mask_kernel_size
@@ -128,15 +137,15 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     import torch
 
-    image_batch = np.random.rand(1, 4, 4, 4).astype(np.float32)
+    image_batch = np.random.rand(96, 4, 192, 192).astype(np.float32)
     # image_shape = (6, 6)  # 原图大小
-    mask_kernel_size = 1  # 遮蔽块大小
-    single_image_size = 4  # 每个子图的大小
-    binary_mask = '1000'  # 指定遮蔽的区域
+    mask_kernel_size = 12  # 遮蔽块大小
+    single_image_size = 192  # 每个子图的大小
+    binary_mask = '1111'  # 指定遮蔽的区域
     mask_rate = 0.75  # 遮蔽的比例
     method = 'channels'
     start = time.time()
-    masked_image = random_masked_channels(image_batch, mask_kernel_size, single_image_size, binary_mask, mask_rate)
+    masked_image = random_masked_channels(image_batch, mask_kernel_size, single_image_size, binary_mask, mask_rate, is_random=False)
     end = time.time()
 
     masked_result = image_batch * masked_image
@@ -148,27 +157,27 @@ if __name__ == '__main__':
         plt.subplot(1, 4, 1)  # 1行3列的第1个位置
         plt.imshow(masked_image[0, 0, :, :], cmap='gray', vmin=0, vmax=1)
         plt.colorbar()  # 添加颜色条
-        plt.title('Masked Image')  # 添加标题
+        plt.title('T1ce mask')  # 添加标题
         plt.axis('off')  # 关闭坐标轴显示
 
         # 显示 masked_result
         plt.subplot(1, 4, 2)  # 1行3列的第2个位置
         plt.imshow(masked_image[0, 1, :, :], cmap='gray', vmin=0, vmax=1)
         plt.colorbar()  # 添加颜色条
-        plt.title('Masked Result')
+        plt.title('T1n mask')
         plt.axis('off')  # 关闭坐标轴显示
 
         # 显示原始 images
         plt.subplot(1, 4, 3)  # 1行3列的第3个位置
         plt.imshow(masked_image[0, 2, :, :], cmap='gray', vmin=0, vmax=1)
         plt.colorbar()  # 添加颜色条
-        plt.title('Original Image')
+        plt.title('T2w mask')
         plt.axis('off')  # 关闭坐标轴显示
         # 显示原始 images
         plt.subplot(1, 4, 4)  # 1行3列的第3个位置
         plt.imshow(masked_image[0, 3, :, :], cmap='gray', vmin=0, vmax=1)
         plt.colorbar()  # 添加颜色条
-        plt.title('Original Image')
+        plt.title('T2f mask')
         plt.axis('off')  # 关闭坐标轴显示
     elif method == 'plane':
         # 设置图像显示的大小

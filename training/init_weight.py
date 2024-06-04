@@ -31,10 +31,10 @@ class ModelInitializer:
             if p.dim() > 1:  # 避免初始化偏置参数
                 if self.uniform:
                     print("Using uniform initialization for Xavier initialization.")
-                    nn.init.xavier_uniform_(p)
+                    # nn.init.xavier_uniform_(p)
                 else:
                     print("Using normal initialization for Xavier initialization.")
-                    nn.init.xavier_normal_(p)
+                    # nn.init.xavier_normal_(p)
 
     def _he_init(self, model):
         """

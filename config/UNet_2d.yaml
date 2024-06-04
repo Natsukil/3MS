@@ -45,6 +45,7 @@ mask:
   test_binary_mask: "1000"
   train_mask_rate: 0.75
   test_mask_rate: 1
+  is_random : False
 
 loss:
   mask_rate: 0.8

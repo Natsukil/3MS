@@ -85,7 +85,7 @@ def random_flip(image, action):
 
 class Dataset_brats(Dataset):
     def __init__(self, root_dir, slice_deep, slice_size=192, mask_kernel_size=12, binary_mask='1111', mask_rate=0.5,
-                 mode='train', concat_method='plane'):
+                 mode='train', concat_method='plane', is_random=False):
         """
         初始化函数，列出所有患者的数据目录。
         """
@@ -99,6 +99,7 @@ class Dataset_brats(Dataset):
         self.mask_rate = mask_rate
         self.slice_deep = slice_deep
         self.list_dir = "data/list/pre-test-50"
+        self.mask_random = is_random
 
         # 根据模式选择对应的csv文件
         if self.mode == 'train':
@@ -128,10 +129,10 @@ class Dataset_brats(Dataset):
         # 生成遮蔽掩码
         if self.concat_method == 'plane':
             masked_image = random_masked_area(combined_image, self.mask_kernel_size, self.slice_size, self.binary_mask,
-                                              self.mask_rate, self.concat_method)
+                                              self.mask_rate)
         elif self.concat_method == 'channels':
             masked_image = random_masked_channels(combined_image, self.mask_kernel_size, self.slice_size,
-                                                  self.binary_mask, self.mask_rate)
+                                                  self.binary_mask, self.mask_rate, self.mask_random)
         end = time.time()
         # print(f"mask time: {end - start:.4f}")
         # 生成遮蔽后图像
@@ -180,13 +181,13 @@ class Dataset_brats(Dataset):
 
 def get_brats_dataloader(root_dir, batch_size=1, slice_deep=16,
                          slice_size=192, num_workers=1, mask_kernel_size=12,
-                         binary_mask='1111', mask_rate=0.5, mode='train', concat_method='plane'):
+                         binary_mask='1111', mask_rate=0.5, mode='train', concat_method='plane', is_random=False):
     is_shuffle = False
     if mode == 'train':
         is_shuffle = True
     dataset = Dataset_brats(root_dir=root_dir, slice_deep=slice_deep, slice_size=slice_size,
                             binary_mask=binary_mask, mask_kernel_size=mask_kernel_size, mask_rate=mask_rate,
-                            mode=mode, concat_method=concat_method)
+                            mode=mode, concat_method=concat_method, is_random=is_random)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=is_shuffle,
                             num_workers=num_workers, pin_memory=True)
     return dataloader

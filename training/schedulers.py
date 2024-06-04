@@ -11,7 +11,7 @@ class SchedulerFactory:
         elif scheduler_name == 'cosine_wr':
             self.scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=10, T_mult=2, eta_min=0.00001)
         elif scheduler_name == 'cosine_lr':
-            self.scheduler = CosineAnnealingLR(optimizer, T_max=100, eta_min=0.00001)
+            self.scheduler = CosineAnnealingLR(optimizer, T_max=100, eta_min=1e-5)
 
     def step(self):
         if self.scheduler is not None:

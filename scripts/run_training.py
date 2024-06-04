@@ -25,17 +25,23 @@ def main(args):
 
     concat = args.concat if args.concat else config['data']['concat']
 
+    lr = args.learning_rate if args.learning_rate else config['train']['learning_rate']
+
+    scheduler = args.scheduler if args.scheduler else config['train']['scheduler']
     # get network
     net = get_network(model_name, concat).to(device)
+
+    if args.scheduler:
+        config['mask']['is_random'] = args.mask_random
 
     # loss function
     criterion = LossFunctions(concat)
 
     # optimizer
-    optimizer_f = OptimizerFactory(config['train']['optimizer'], net, lr=float(config['train']['learning_rate']))
+    optimizer_f = OptimizerFactory(config['train']['optimizer'], net, lr=lr)
 
     # learning rate scheduler
-    scheduler_f = SchedulerFactory(optimizer_f.optimizer, config['train']['scheduler'])
+    scheduler_f = SchedulerFactory(optimizer_f.optimizer, scheduler)
 
     # eval
     # metric = MetricFactory
