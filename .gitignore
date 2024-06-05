@@ -162,3 +162,4 @@ cython_debug/
 # 3MS
 result/
 data/raw/
+static/

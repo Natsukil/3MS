@@ -29,6 +29,7 @@ def get_args():
     parser.add_argument('--concat', type=str, help='image concat method')
 
     parser.add_argument('--learning_rate', type=float, help='learning rate')
+
     parser.add_argument('--scheduler', type=str, help='scheme')
 
     # 用于设置 mask_random 为 True 的参数
@@ -39,5 +40,7 @@ def get_args():
     parser.add_argument("--mask_kernel_size", type=int, help="mask kernel size")
 
     parser.add_argument("--num_works", type=int, help="dataloader num_works")
+
+    parser.add_argument("-dsp", "--description", type=str, default="", help="exp description")
 
     return parser.parse_args()

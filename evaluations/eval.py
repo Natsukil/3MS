@@ -69,7 +69,7 @@ def calculate_metrics(target, ref, device='cuda', binary_masks=None, concat_meth
 
             # 计算PSNR和SSIM
             cur_psnr = psnr_func(target_region, output_region)
-            cur_ssim = ssim_func(target_region, output_region)
+            cur_ssim = ssim_func(target_region, output_region, data_range=1)
 
             avg_psnr[area] += cur_psnr
             avg_ssim[area] += cur_ssim

@@ -15,7 +15,7 @@ def create_checkpoint(epoch, model, optimizer_f, scheduler_f, loss, filename):
 
 def load_checkpoint(filename, model, optimizer_f, scheduler_f, method='model', map_location='cpu'):
     if method == 'resume':
-        checkpoint = torch.load(filename)
+        checkpoint = torch.load(filename, map_location=map_location)
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer_f.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         scheduler_f.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
@@ -28,3 +28,4 @@ def load_checkpoint(filename, model, optimizer_f, scheduler_f, method='model', m
         model.load_state_dict(checkpoint['model_state_dict'])
     else:
         raise ValueError('method must be resume or model')
+

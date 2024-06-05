@@ -56,7 +56,7 @@ def train(config, net, device, criterion, optimizer_f, scheduler_f, metric, resu
     # 定义模型保存路径
     save_root = "result/models/" + config['train']['model']
     current_time = datetime.datetime.now().strftime("-%m-%d-%H-%M-%S")
-    save_root = Path(save_root) / (train_binary_mask + current_time)
+    save_root = Path(save_root) / (config['train']['description'] + train_binary_mask + current_time)
     os.makedirs(save_root, exist_ok=True)  # 创建目录
     # model_path = Path(model_save_dir)/ 'best.ckpt'
 

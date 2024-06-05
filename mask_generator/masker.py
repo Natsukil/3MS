@@ -1,3 +1,4 @@
+import math
 import random
 import numpy as np
 import time
@@ -78,37 +79,43 @@ def random_masked_channels(image_batch, mask_kernel_size, slice_size, binary_mas
         :param mask_rate: float, 遮蔽的比例
         :return: ndarray, 遮蔽后的图像批次
         """
-    if is_random:
-        mask_rate = random.uniform(0.0, 1.0)
-        pro_size = [3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96]
-        mask_kernel_size = pro_size[random.randint(0, 10)]
-        # print(mask_rate, mask_kernel_size)
-
+    pro_size = [3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96]
+    binary_mask_random = ['1000', '0100', '0010', '0001']
+    slice_binary_mask = binary_mask
     slice_num = image_batch.shape[0]
     # 初始化原图的遮蔽掩码
 
     masked_image = np.zeros(image_batch.shape)
 
-    # 构建遮蔽块计数图的维度
-    masked_sub_image_size = slice_size // mask_kernel_size
-
-
-
-
     # 检查每一子图是否需要遮蔽
     # for index in range(batch_size):
     for slice_index in range(slice_num):
 
+        if is_random:
+            mask_kernel_size = pro_size[random.randint(0, 10)]
+            if random.uniform(0.0, 1.0) > 0.8:
+                slice_binary_mask = binary_mask_random[random.randint(0, 3)]
+                mask_rate = random.uniform(0.75, 1.0)
+            else :
+                mask_rate = random.uniform(0.0, 1.0)
+        else:
+            slice_binary_mask = binary_mask
+        # 构建遮蔽块计数图的维度
+        masked_sub_image_size = slice_size // mask_kernel_size
+        # print(mask_rate, mask_kernel_size, slice_binary_mask)
         masked_sub_image_count = np.zeros((masked_sub_image_size, masked_sub_image_size), dtype=bool)
 
+
+
         for i in range(4):
-            if binary_mask[i] == '0':
+            if slice_binary_mask[i] == '0':
                 masked_image[slice_index, i, :, :] = 1
                 continue
                 # 计算子图的位置
 
+
             num_blocks = masked_sub_image_count.size
-            num_keep = int(num_blocks * (1- mask_rate))
+            num_keep = math.ceil(num_blocks * (1 - mask_rate))
 
             # 获取当前未被选择的块索引
             available_blocks = np.argwhere(masked_sub_image_count == 0)
@@ -137,15 +144,16 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     import torch
 
-    image_batch = np.random.rand(96, 4, 192, 192).astype(np.float32)
+    image_batch = np.random.rand(1, 4, 192, 192).astype(np.float32)
     # image_shape = (6, 6)  # 原图大小
-    mask_kernel_size = 12  # 遮蔽块大小
+    mask_kernel_size = 3  # 遮蔽块大小
     single_image_size = 192  # 每个子图的大小
-    binary_mask = '1111'  # 指定遮蔽的区域
-    mask_rate = 0.75  # 遮蔽的比例
+    binary_mask = '1000'  # 指定遮蔽的区域
+    mask_rate = 1  # 遮蔽的比例
     method = 'channels'
     start = time.time()
-    masked_image = random_masked_channels(image_batch, mask_kernel_size, single_image_size, binary_mask, mask_rate, is_random=False)
+    # masked_image = random_masked_channels(image_batch, mask_kernel_size, single_image_size, binary_mask, mask_rate, is_random=False)
+    masked_image = random_masked_channels(image_batch, mask_kernel_size, single_image_size, binary_mask, mask_rate, is_random=True)
     end = time.time()
 
     masked_result = image_batch * masked_image

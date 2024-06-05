@@ -3,7 +3,7 @@ import torch
 from pytorch_msssim import ssim, ms_ssim, SSIM, MS_SSIM
 
 
-def psnr_np(target, ref):
+def psnr_np(target, ref, max_pixel=1.0):
     """
     归一化图像的数据范围是-1到1。
     假设图像的像素值范围为 [-1, 1]。
@@ -20,14 +20,16 @@ def psnr_np(target, ref):
     mse = np.mean(np.square(diff))
 
     # 计算PSNR，最大像素值设置为2
-    psnr_value = 20 * np.log10(2.0 / np.sqrt(mse))
-    return psnr_value
+    # psnr_value = 20 * np.log10(max_pixel / np.sqrt(mse))
+    psnr = 10 * np.log10(max_pixel ** 2 / mse)
+    return psnr
 
 
 def psnr_gpu(target, output, max_pixel=1.0):
     mse_loss = torch.nn.MSELoss()
     mse = mse_loss(output, target)  # 确保output和target已经在GPU上
-    psnr = 20 * torch.log10(max_pixel / torch.sqrt(mse))
+    # psnr = 20 * torch.log10(max_pixel / torch.sqrt(mse))
+    psnr = 10 * torch.log10(max_pixel ** 2 / mse)
     return psnr
 
 
@@ -42,7 +44,7 @@ def ssim_np(target, ref):
     """
     # 计算 SSIM
     # 我们指定 data_range 参数为 2，因为归一化图像的范围是从-1到1，差值为2
-    ssim_value = ssim(target, ref, data_range=2)
+    ssim_value = ssim(target, ref, data_range=1)
     return ssim_value
 
 

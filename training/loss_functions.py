@@ -26,7 +26,7 @@ class LossFunctions:
     def __init__(self, concat_method):
         self.background_weight = 0.01
         self.mse_loss = nn.MSELoss(reduction='none')
-        self.ssim_loss = pytorch_msssim.SSIM()
+        self.ssim_loss = pytorch_msssim.SSIM(data_range=1, channel=1)
         self.concat = concat_method
 
     def calculate_loss_regions(self, y_hat, y, binary_masks):
@@ -64,7 +64,7 @@ class LossFunctions:
             region_background_mask = background_masks[region_slice]
 
             mse = self.mse_loss(y_hat[region_slice], y[region_slice])
-            # ssim = self.ssim_loss(y_hat[region_slice], y[region_slice])
+            ssim = self.ssim_loss(y_hat[region_slice], y[region_slice])
 
             # 计算非背景部分的 MSE 损失
             non_background_mse = mse * region_background_mask
@@ -75,13 +75,13 @@ class LossFunctions:
             background_loss = torch.sum(background_mse) / (torch.sum(1 - region_background_mask) + 1e-8)
 
             # 加权非背景和背景损失
-            combined_loss = (1 - self.background_weight) * non_background_loss + self.background_weight * background_loss
+            combined_mse_loss = (1 - self.background_weight) * non_background_loss + self.background_weight * background_loss
 
             # 根据权重合并每个区域的损失
             # 你可以根据需要调整损失的权重或合并策略
             # combined_loss = mse + (1 - ssim)
             # total_loss += combined_loss
-            total_loss += weights[idx] * combined_loss
+            total_loss += weights[idx] * (combined_mse_loss + (1 - ssim))
             # total_loss += weights[idx] * mse.mean()/
 
         return total_loss

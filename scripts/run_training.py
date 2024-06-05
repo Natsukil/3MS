@@ -17,6 +17,8 @@ def main(args):
     # load config from file
     config = load_config(args.config)
 
+
+
     device = torch.device(
         args.device if args.device else config['train']['device'] if torch.cuda.is_available() else 'cpu')
     model_name = args.model if args.model else config['train']['model']
@@ -33,6 +35,8 @@ def main(args):
 
     if args.scheduler:
         config['mask']['is_random'] = args.mask_random
+
+    config['train']['description'] = args.description
 
     # loss function
     criterion = LossFunctions(concat)
@@ -61,7 +65,7 @@ def main(args):
     # 是否使用预训练模型
     elif pretrain:
         try:
-            net.load_state_dict(torch.load(load_dir))
+            load_checkpoint(load_dir, net, None, None, method='model')
         except Exception as e:
             print(e)
             print('load pretrain model failed')
